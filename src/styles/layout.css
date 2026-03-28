@@ -1,0 +1,52 @@
+/* src/styles/layout.css */
+
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap');
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Body / rot ── */
+body {
+  background: #020617;
+  color: #f8fafc;
+  font-family: 'Barlow', sans-serif;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App-shell: sentrert, maks mobilbredde ── */
+#root {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+  padding-bottom: 40px;
+}
+
+/* ── Input-reset (brukes i Home) ── */
+input {
+  font-family: 'Barlow', sans-serif;
+  outline: none;
+}
+
+input::placeholder {
+  color: #334155;
+}
+
+/* ── Scrollbar (valgfritt, for desktop) ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 3px;
+}
