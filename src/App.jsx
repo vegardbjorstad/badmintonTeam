@@ -175,6 +175,11 @@ export default function App() {
   const [allMatches, setAllMatches]   = useState([]);
   const [allPauses, setAllPauses]     = useState([]);
 
+  // For økt-historikk mulighet til å slette økter 
+
+
+
+
   // UI
   const [loading, setLoading]       = useState(false);
   const [toast, setToast]           = useState(null);
@@ -207,6 +212,38 @@ export default function App() {
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [session]);
+
+//sletting av økt med loggfunksjonalitet
+async function softDeleteSession(sessionId) {
+  console.log("Trying to delete session:", sessionId);
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .select();
+
+  if (error) {
+    console.error("Supabase error:", error);
+    showToast("Feil: klarte ikke å slette økten", "error");
+    return;
+  }
+
+  console.log("Delete result:", data);
+  await loadAll();
+  showToast("Økt flyttet til arkiv", "warning");
+}
+
+
+async function restoreSession(sessionId) {
+  await supabase
+    .from("sessions")
+    .update({ deleted_at: null })
+    .eq("id", sessionId);
+
+  await loadAll();
+  showToast("Økt gjenopprettet ✓", "success");
+}
 
   async function loadPlayers() {
     const { data } = await supabase.from("players").select("*").order("name");
@@ -352,16 +389,40 @@ export default function App() {
 
   const sessionPauses  = allPauses.filter(p => p.session_id === session?.id);
   const sessionStats   = computeStats(sessionMatches, sessionPauses);
-  const totalStats     = computeStats(allMatches, allPauses);
+const activeMatches = allMatches.filter(m => {
+  const s = allSessions.find(s => s.id === m.session_id);
+  return !s?.deleted_at;
+});
+const activePauses = allPauses.filter(p => {
+  const s = allSessions.find(s => s.id === p.session_id);
+  return !s?.deleted_at;
+});
+
+const totalStats = computeStats(activeMatches, activePauses);
 
   // ── Økt-historikk: én rad per økt ──
-  const sessionList = allSessions.map(s => {
+const sessionList = allSessions
+  .filter(s => !s.deleted_at)         // ← viktig!
+  .map(s => {
     const sMatches = allMatches.filter(m => m.session_id === s.id);
-    const sPauses  = allPauses.filter(p => p.session_id === s.id);
-    // Spillere som deltok
-    const participantIds = [...new Set(sMatches.flatMap(m => [m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2]))];
-    return { ...s, matchCount: sMatches.length, participantIds, sMatches, sPauses };
-  }).filter(s => s.matchCount > 0);
+    const sPauses = allPauses.filter(p => p.session_id === s.id);
+    const participantIds = [...new Set(
+      sMatches.flatMap(m => [
+        m.team1_p1, m.team1_p2,
+        m.team2_p1, m.team2_p2
+      ])
+    )];
+
+    return {
+      ...s,
+      matchCount: sMatches.length,
+      participantIds,
+      sMatches,
+      sPauses
+    };
+  })
+  .filter(s => s.matchCount > 0);
+
 
   // ─── RENDER SHELL ────────────────────────────────────────────────────────
 
@@ -437,7 +498,7 @@ export default function App() {
       </div>
 
       <Btn variant="primary" onClick={startSession} disabled={checkedIn.length < 4 || loading}>
-        {loading ? "STARTER..." : `🏸  START ØKTØKT  (${checkedIn.length} spillere)`}
+        {loading ? "STARTER..." : `🏸  START ØKT  (${checkedIn.length} spillere)`}
       </Btn>
       <div style={{ height: 10 }} />
       <Btn variant="ghost" onClick={() => { setStatsTab("total"); setScreen("stats"); }}>📊  Statistikk & historikk</Btn>
@@ -558,7 +619,7 @@ export default function App() {
     <div style={{ display: "flex", borderBottom: "2px solid #1e3a5f" }}>
       {(session
         ? [["session","Denne økt"],["total","Sesong"],["history","Historikk"]]
-        : [["total","Sesong"],["history","Historikk"]]
+        : [["total","Sesong"],["history","Historikk"],["archive","Arkiv"]]
       ).map(([key, label]) => (
         <button key={key} onClick={() => setStatsTab(key)} style={{
           flex: 1, height: 46, background: "none", border: "none",
@@ -571,37 +632,89 @@ export default function App() {
     </div>
 
     <div style={{ padding: 16 }}>
-      {statsTab === "session" && <StatsTable rows={sessionStats} />}
-      {statsTab === "total"   && <StatsTable rows={totalStats} />}
-      {statsTab === "history" && (
-        sessionList.length === 0
-          ? <div style={{ textAlign: "center", color: "#334155", padding: "60px 0" }}>Ingen fullførte økter ennå</div>
-          : <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {sessionList.map(s => (
-                <div key={s.id}
-                  onClick={() => { setDetailSession(s); setScreen("sessionDetail"); }}
-                  style={{ background: "#0f172a", border: "2px solid #1e3a5f", borderRadius: 16, padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ fontSize: 28 }}>📅</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: "#f8fafc", marginBottom: 4 }}>{fmtDate(s.date)}</div>
-                    <div style={{ fontSize: 13, color: "#64748b" }}>
-                      {s.matchCount} kamper &nbsp;·&nbsp;
-                      {s.participantIds.length} spillere
-                    </div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                      {s.participantIds.map(id => (
-                        <span key={id} style={{ fontSize: 12, background: "#1e3a5f", borderRadius: 6, padding: "2px 8px", color: "#94a3b8" }}>
-                          {playerName(id)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ color: "#334155", fontSize: 20 }}>›</div>
+  {statsTab === "session" && <StatsTable rows={sessionStats} />}
+  {statsTab === "total"   && <StatsTable rows={totalStats} />}
+  {statsTab === "history" && (
+    sessionList.length === 0
+      ? <div style={{ textAlign: "center", color: "#334155", padding: "60px 0" }}>Ingen fullførte økter ennå</div>
+      : <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {sessionList.map(s => (
+            <div key={s.id}
+              onClick={() => { setDetailSession(s); setScreen("sessionDetail"); }}
+              style={{ background: "#0f172a", border: "2px solid #1e3a5f", borderRadius: 16, padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ fontSize: 28 }}>📅</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#f8fafc", marginBottom: 4 }}>{fmtDate(s.date)}</div>
+                <div style={{ fontSize: 13, color: "#64748b" }}>
+                  {s.matchCount} kamper &nbsp;·&nbsp;
+                  {s.participantIds.length} spillere
                 </div>
-              ))}
+                <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                  {s.participantIds.map(id => (
+                    <span key={id} style={{ fontSize: 12, background: "#1e3a5f", borderRadius: 6, padding: "2px 8px", color: "#94a3b8" }}>
+                      {playerName(id)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ color: "#334155", fontSize: 20 }}>›</div>
             </div>
-      )}
+          ))}
+        </div>
+  )}
+
+  {/** --------------------------------------
+       🚀 ARKIV-FANEN (MÅ ligge inni padding-diven)
+      --------------------------------------- */}
+
+  {statsTab === "archive" && (
+    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+      {allSessions.filter(s => s.deleted_at).length === 0 &&
+        <div style={{ textAlign:"center", color:"#334155", padding:"60px 0" }}>
+          Ingen slettede økter
+        </div>
+      }
+
+      {allSessions
+        .filter(s => s.deleted_at)
+        .map(s => (
+          <div key={s.id}
+               style={{
+                 background:"#0f172a",
+                 border:"2px solid #7f1d1d",
+                 borderRadius:16,
+                 padding:"16px 18px",
+                 display:"flex",
+                 alignItems:"center",
+                 gap:14
+               }}>
+            <div style={{ fontSize:28 }}>🗃</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:15, color:"#ef4444" }}>
+                {fmtDate(s.date)}
+              </div>
+              <div style={{ fontSize:12, color:"#64748b" }}>
+                Slettet økt – kan gjenopprettes
+              </div>
+            </div>
+
+            <button
+              onClick={() => restoreSession(s.id)}
+              style={{
+                background:"none",
+                border:"2px solid #16a34a",
+                color:"#16a34a",
+                padding:"6px 10px",
+                borderRadius:10,
+                cursor:"pointer"
+              }}>
+              ↩ HENT
+            </button>
+          </div>
+        ))}
     </div>
+  )}
+</div>  {/* ← DENNE skal være etter både history og archive */}
   </>);
 
   // ── ØKTDETALJ ────────────────────────────────────────────────────────────
@@ -610,6 +723,21 @@ export default function App() {
     const dsStats = computeStats(ds.sMatches, ds.sPauses);
     return shell(<>
       {topBar(fmtDate(ds.date), () => setScreen("stats"))}
+  
+  <button
+  onClick={() => softDeleteSession(ds.id)}
+  style={{
+    background:"none",
+    border:"2px solid #7f1d1d",
+    borderRadius:10,
+    color:"#ef4444",
+    padding:"6px 14px",
+    marginBottom:16,
+    cursor:"pointer"
+  }}>
+  🗑 SLETT ØKT
+</button>
+
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           {[
