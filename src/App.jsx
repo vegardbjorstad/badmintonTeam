@@ -13,12 +13,28 @@ import Stats         from "./screens/Stats";
 import SessionDetail from "./screens/SessionDetail";
 
 import "./styles/layout.css";
+import { computeFunStats } from "./logic/funStats";
+import DailyStatsPopup from "./components/DailyStatsPopup";
 
 export default function App() {
   // ── Navigasjon ──
   const [screen, setScreen]           = useState("home");
   const [statsTab, setStatsTab]       = useState("session");
   const [detailSession, setDetailSession] = useState(null);
+
+  // ── Daglig popup ──
+  const [showDailyStats, setShowDailyStats] = useState(false);
+
+  const handleCloseDailyStats = () => {
+    localStorage.setItem("lastDailyStats", new Date().toDateString());
+    setShowDailyStats(false);
+  };
+
+  useEffect(() => {
+    const last = localStorage.getItem("lastDailyStats");
+    const today = new Date().toDateString();
+    if (last !== today) setShowDailyStats(true);
+  }, []);
 
   // ── Spillere ──
   const [players, setPlayers] = useState([]);
@@ -143,10 +159,15 @@ export default function App() {
   );
 
   // ── RENDER ──
+  const funStats = computeFunStats(sess.allMatches, sess.allSessions, players);
+
   return (
     <div>
       <Toast toast={sess.toast} />
       {sess.showEndConfirm && <EndConfirmModal />}
+      {showDailyStats && (
+        <DailyStatsPopup stats={funStats} onClose={handleCloseDailyStats} />
+      )}
 
       {screen === "home" && (
         <Home
