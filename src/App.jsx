@@ -232,6 +232,7 @@ export default function App() {
         <SessionDetail
           detailSession={detailSession}
           playerName={playerName}
+          players={players}
           computeStats={computeStats}
           softDeleteSession={async (id) => {
             await sess.softDeleteSession(id);

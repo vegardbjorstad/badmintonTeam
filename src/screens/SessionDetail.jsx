@@ -31,6 +31,7 @@ const fmtDate = (iso) => {
 export default function SessionDetail({
   detailSession,
   playerName,
+  players,
   computeStats,
   softDeleteSession,
   setScreen,
@@ -38,7 +39,7 @@ export default function SessionDetail({
   if (!detailSession) return null;
 
   const ds = detailSession;
-  const dsStats = computeStats(ds.sMatches, ds.sPauses);
+  const dsStats = computeStats(ds.sMatches, ds.sPauses, players);
 
   return (
     <>
