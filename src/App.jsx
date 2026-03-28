@@ -427,7 +427,7 @@ const sessionList = allSessions
   // ─── RENDER SHELL ────────────────────────────────────────────────────────
 
   const shell = (children) => (
-    <div style={{ minHeight: "100dvh", background: "#020617", color: "#f8fafc", fontFamily: "'Barlow', sans-serif", paddingBottom: 40, maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div style={{ minHeight: "100dvh", background: "#020617", color: "#f8fafc", fontFamily: "'Barlow', sans-serif", paddingBottom: 40, width: "100%", maxWidth: "100%", margin: "0 auto", position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet" />
       <Toast toast={toast} />
       {children}
