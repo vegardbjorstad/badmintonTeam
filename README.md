@@ -27,10 +27,7 @@ Components for visuelle elementer
 BackEnd sikkerhet
 Device security registrering eller innlogging? 
 hvis innlogg: lage brukere og passord
-Implementering av sesonger og total
-Favorittpartner 
-Hate -partner
+Implementering av sesonger og total??
 Handicap?
-push notifiactions? statistic fun facts?
 gui refinement
 
