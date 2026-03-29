@@ -1,6 +1,13 @@
 // src/components/ScoreBig.jsx
 
 export default function ScoreBig({ value, onChange, win }) {
+  const handleInput = (e) => {
+    const raw = e.target.value.replace(/\D/g, ""); // bare siffer
+    if (raw === "") { onChange(0); return; }
+    const num = Math.min(99, parseInt(raw, 10));
+    onChange(num);
+  };
+
   return (
     <div
       style={{
@@ -12,7 +19,7 @@ export default function ScoreBig({ value, onChange, win }) {
     >
       {/* Pluss-knapp */}
       <button
-        onClick={() => onChange(Math.min(30, value + 1))}
+        onClick={() => onChange(Math.min(99, value + 1))}
         style={{
           width: 62,
           height: 52,
@@ -28,15 +35,19 @@ export default function ScoreBig({ value, onChange, win }) {
         +
       </button>
 
-      {/* Selve tallboksen */}
-      <div
+      {/* Tallboks — trykk for å taste inn */}
+      <input
+        type="number"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={value}
+        onChange={handleInput}
+        onFocus={(e) => e.target.select()}
         style={{
           width: 72,
           height: 72,
           borderRadius: 16,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          textAlign: "center",
           fontFamily: "'Barlow Condensed',sans-serif",
           fontSize: 40,
           fontWeight: 800,
@@ -44,10 +55,11 @@ export default function ScoreBig({ value, onChange, win }) {
           border: `3px solid ${win ? "#16a34a" : "#1e3a5f"}`,
           color: win ? "#16a34a" : "#f8fafc",
           transition: "all 0.2s",
+          outline: "none",
+          MozAppearance: "textfield",
+          cursor: "text",
         }}
-      >
-        {value}
-      </div>
+      />
 
       {/* Minus-knapp */}
       <button

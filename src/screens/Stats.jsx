@@ -155,7 +155,7 @@ export default function Stats({
                     gap: 14,
                   }}
                 >
-                  <div style={{ fontSize: 28 }}>📅</div>
+                  <div style={{ fontSize: 28 }}>🏸</div>
                   <div style={{ flex: 1 }}>
                     <div
                       style={{
