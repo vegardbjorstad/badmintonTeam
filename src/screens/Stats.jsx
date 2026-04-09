@@ -14,6 +14,12 @@ const fmtDate = (iso) => {
   });
 };
 
+const fmtTime = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+};
+
 /**
  * Stats-skjermen
  * --------------
@@ -157,15 +163,20 @@ export default function Stats({
                 >
                   <div style={{ fontSize: 28 }}>🏸</div>
                   <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 15,
-                        color: "#f8fafc",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {fmtDate(s.date)}
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: "#f8fafc" }}>
+                        {fmtDate(s.date)}
+                      </div>
+                      {fmtTime(s.created_at) && (
+                        <div style={{
+                          fontSize: 13, fontWeight: 700,
+                          color: "#38bdf8",
+                          fontFamily: "'Barlow Condensed',sans-serif",
+                          letterSpacing: "0.04em",
+                        }}>
+                          kl. {fmtTime(s.created_at)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontSize: 13, color: "#64748b" }}>
                       {s.matchCount} kamper &nbsp;·&nbsp;
