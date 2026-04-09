@@ -155,10 +155,22 @@ export function useSession(players, club) {
     setScore({ t1: 0, t2: 0 });
   }
 
-  function addPlayerToOngoingSession(playerId, playerName) {
+  function addPlayerToOngoingSession(playerId, playerName, activePlayers) {
     setCheckedIn((prev) => [...prev, playerId]);
-    setWaitingQueue((prev) => [...prev, playerId]);
-    showToast(`${playerName} lagt til i økta ✓`, "success");
+
+    // Nullstill matchHistory slik at rotasjonen starter pa nytt for alle 5+
+    // Den nye spilleren er likestilt med de andre (alle har 0 kamper i ny runde)
+    setMatchHistory([]);
+    setWaitingQueue([]);
+
+    // Generer forste kamp i den nye rotasjonen
+    const allPlayers = [...activePlayers, { id: playerId }];
+    const next = generateNextMatch(allPlayers, [], []);
+    setCurrentMatch(next);
+    setWaitingQueue(next?.sitting || []);
+    setScore({ t1: 0, t2: 0 });
+
+    showToast(`${playerName} lagt til — rotasjon startet pa nytt`, "success");
   }
 
   // ── Fjern spiller underveis ──────────────────────────────────────────────
