@@ -14,6 +14,12 @@ const fmtDate = (iso) => {
   });
 };
 
+const fmtTime = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+};
+
 /**
  * SessionDetail-skjermen
  * ----------------------
@@ -77,7 +83,12 @@ export default function SessionDetail({
             flex: 1,
           }}
         >
-          {fmtDate(ds.date)}
+          <div>{fmtDate(ds.date)}</div>
+          {fmtTime(ds.created_at) && (
+            <div style={{ fontSize: 14, color: "#64748b", fontWeight: 600, marginTop: 2 }}>
+              kl. {fmtTime(ds.created_at)}
+            </div>
+          )}
         </div>
       </div>
 
