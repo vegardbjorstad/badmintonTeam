@@ -146,6 +146,15 @@ export function useSession(players, club) {
     setScore({ t1: 0, t2: 0 });
   }
 
+  // ── Forkast kamp (0-0) og generer ny ──
+  function discardMatch(activePlayers) {
+    showToast("Kamp forkastet — ny kamp generert", "info");
+    const next = generateNextMatch(activePlayers, matchHistory, waitingQueue);
+    setCurrentMatch(next);
+    setWaitingQueue(next?.sitting || []);
+    setScore({ t1: 0, t2: 0 });
+  }
+
   function addPlayerToOngoingSession(playerId, playerName) {
     setCheckedIn((prev) => [...prev, playerId]);
     setWaitingQueue((prev) => [...prev, playerId]);
@@ -243,6 +252,7 @@ export function useSession(players, club) {
     startSession, endSession,
     saveMatch, undoLast,
     addPlayerToOngoingSession,
+    discardMatch,
     removePlayerFromSession,
     softDeleteSession, restoreSession,
     sessionStats, totalStats, sessionList,
