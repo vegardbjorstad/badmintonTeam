@@ -9,9 +9,9 @@ import { computeStats } from "../logic/stats";
  * useSession
  * ----------
  * Samler all tilstand og logikk for én badminton-økt.
- * Returnerer alt App.jsx trenger for å rendre skjermene.
+ * Tar nå imot `club` som parameter så alle DB-kall filtreres på club_id.
  */
-export function useSession(players) {
+export function useSession(players, club) {
   // ── Pågående økt ──
   const [session, setSession]               = useState(null);
   const [matchHistory, setMatchHistory]     = useState([]);
@@ -41,7 +41,16 @@ export function useSession(players) {
     toastTimer.current = setTimeout(() => setToast(null), 2800);
   };
 
-  // ── Realtime-abonnement på sessions-matches ──
+  // ── Nullstill data når klubb bytter ──
+  useEffect(() => {
+    if (!club) return;
+    setAllSessions([]);
+    setAllMatches([]);
+    setAllPauses([]);
+    loadAll();
+  }, [club?.id]);
+
+  // ── Realtime: oppdater kamper i pågående økt ──
   useEffect(() => {
     if (!session) return;
     const ch = supabase
@@ -60,16 +69,17 @@ export function useSession(players) {
     return () => supabase.removeChannel(ch);
   }, [session]);
 
-  // ── DB-lasting ──
+  // ── DB-lasting (filtrert på club_id) ──
   async function loadAll() {
+    if (!club) return;
     const [
       { data: sessions },
       { data: matches },
       { data: pauses },
     ] = await Promise.all([
-      supabase.from("sessions").select("*").order("date", { ascending: false }),
-      supabase.from("matches").select("*"),
-      supabase.from("match_pauses").select("*"),
+      supabase.from("sessions").select("*").eq("club_id", club.id).order("date", { ascending: false }),
+      supabase.from("matches").select("*").eq("club_id", club.id),
+      supabase.from("match_pauses").select("*").eq("club_id", club.id),
     ]);
     if (sessions) setAllSessions(sessions);
     if (matches)  setAllMatches(matches);
@@ -94,7 +104,10 @@ export function useSession(players) {
     setLoading(true);
     const { data, error } = await supabase
       .from("sessions")
-      .insert({ date: new Date().toISOString().slice(0, 10) })
+      .insert({
+        date: new Date().toISOString().slice(0, 10),
+        club_id: club.id,
+      })
       .select()
       .single();
     setLoading(false);
@@ -111,7 +124,7 @@ export function useSession(players) {
     setCurrentMatch(match);
     setWaitingQueue(match?.sitting || []);
     setScore({ t1: 0, t2: 0 });
-    return true; // signal til App om å bytte skjerm
+    return true;
   }
 
   // ── Avslutt økt ──
@@ -128,7 +141,7 @@ export function useSession(players) {
     setMatchHistory([]);
     setCheckedIn([]);
     showToast("Økt avsluttet ✓", "success");
-    return true; // signal til App om å bytte skjerm
+    return true;
   }
 
   // ── Lagre kamp ──
@@ -140,8 +153,9 @@ export function useSession(players) {
     const { data: savedMatch, error } = await supabase
       .from("matches")
       .insert({
-        session_id: session.id,
+        session_id:   session.id,
         match_number: matchNumber,
+        club_id:      club.id,
         team1_p1: team1[0], team1_p2: team1[1],
         team2_p1: team2[0], team2_p2: team2[1],
         score_team1: score.t1, score_team2: score.t2,
@@ -157,9 +171,10 @@ export function useSession(players) {
     if (currentMatch.sitting.length > 0) {
       await supabase.from("match_pauses").insert(
         currentMatch.sitting.map((pid) => ({
-          match_id: savedMatch.id,
-          player_id: pid,
+          match_id:   savedMatch.id,
+          player_id:  pid,
           session_id: session.id,
+          club_id:    club.id,
         }))
       );
     }
@@ -258,26 +273,21 @@ export function useSession(players) {
     .filter((s) => s.matchCount > 0);
 
   return {
-    // Økt-tilstand
     session, setSession,
     matchHistory, waitingQueue,
     currentMatch, matchNumber,
     score, setScore,
     sessionMatches,
-    // DB-data
     allSessions, allMatches, allPauses,
-    // UI
     loading, toast, showToast,
     showEndConfirm, setShowEndConfirm,
     showAddPlayers, setShowAddPlayers,
     checkedIn, setCheckedIn,
-    // Handlinger
     loadAll,
     startSession, endSession,
     saveMatch, undoLast,
     addPlayerToOngoingSession,
     softDeleteSession, restoreSession,
-    // Avledede verdier
     sessionStats, totalStats, sessionList,
   };
 }

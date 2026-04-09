@@ -4,6 +4,20 @@ import Avatar from "../components/Avatar";
 import Btn from "../components/Btn";
 import Label from "../components/Label";
 
+const getInitials = (name) =>
+  name.trim().split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+
+/**
+ * Home
+ * ----
+ * Endret fra original:
+ *   - Viser klubbnavn og klubbfarge i header (fra `club`-prop)
+ *   - Logout-knapp øverst til høyre
+ *   - Klubbfarge brukes på check-in-border og +-knapp
+ *
+ * Nye props: club, onLogout
+ * Uendrede props: alle originale props
+ */
 export default function Home({
   players,
   checkedIn,
@@ -15,42 +29,86 @@ export default function Home({
   loading,
   startSession,
   goToStats,
+  // Nye props
+  club,
+  onLogout,
 }) {
+  const clubColor = club?.color || "#38bdf8";
+
   return (
     <>
       {/* Header */}
       <div
         style={{
           background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
-          padding: "36px 20px 24px",
+          padding: "28px 20px 20px",
           borderBottom: "2px solid #1e3a5f",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ fontSize: 42 }}>🏸</span>
-          <div>
+          {/* Klubb-avatar med farge */}
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background: clubColor,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 800,
+              fontSize: 18,
+              color: "#fff",
+              fontFamily: "'Barlow Condensed',sans-serif",
+              flexShrink: 0,
+            }}
+          >
+            {club ? getInitials(club.name) : "🏸"}
+          </div>
+
+          <div style={{ flex: 1 }}>
             <div
               style={{
                 fontFamily: "'Barlow Condensed',sans-serif",
-                fontSize: 32,
+                fontSize: 20,
                 fontWeight: 800,
                 lineHeight: 1,
-                color: "#38bdf8",
+                color: clubColor,
+                letterSpacing: "0.02em",
               }}
             >
-              BADMINTON
+              {club?.name || "BADMINTON"}
             </div>
             <div
               style={{
-                fontSize: 12,
-                color: "#94a3b8",
+                fontSize: 11,
+                color: "#64748b",
                 fontWeight: 600,
-                letterSpacing: "0.12em",
+                letterSpacing: "0.1em",
+                marginTop: 2,
               }}
             >
               TRENINGSAPP
             </div>
           </div>
+
+          {/* Logg ut */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#475569",
+                fontSize: 13,
+                cursor: "pointer",
+                fontFamily: "'Barlow',sans-serif",
+                padding: "4px 8px",
+              }}
+            >
+              Logg ut
+            </button>
+          )}
         </div>
       </div>
 
@@ -84,7 +142,7 @@ export default function Home({
               width: 54,
               height: 54,
               borderRadius: 12,
-              background: "#38bdf8",
+              background: clubColor,
               border: "none",
               color: "#0f172a",
               fontSize: 28,
@@ -114,20 +172,16 @@ export default function Home({
                   borderRadius: 14,
                   cursor: "pointer",
                   background: active ? "#0c2a4a" : "#0f172a",
-                  border: `2px solid ${active ? "#38bdf8" : "#1e3a5f"}`,
+                  border: `2px solid ${active ? clubColor : "#1e3a5f"}`,
                 }}
               >
                 <Avatar name={p.name} size={46} colorIndex={i} />
-                <span style={{ fontSize: 18, fontWeight: 600, flex: 1 }}>{p.name}</span>
-                <span
-                  style={{
-                    fontSize: 22,
-                    color: active ? "#38bdf8" : "#334155",
-                  }}
-                >
+                <span style={{ fontSize: 18, fontWeight: 600, flex: 1 }}>
+                  {p.name}
+                </span>
+                <span style={{ fontSize: 22, color: active ? clubColor : "#334155" }}>
                   {active ? "✓" : "○"}
                 </span>
-
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -161,13 +215,18 @@ export default function Home({
           variant="primary"
           onClick={startSession}
           disabled={checkedIn.length < 4 || loading}
+          style={{
+            background:
+              checkedIn.length >= 4
+                ? `linear-gradient(135deg, ${clubColor}, #6366f1)`
+                : undefined,
+          }}
         >
           {loading ? "STARTER..." : `🏸 START ØKT (${checkedIn.length} spillere)`}
         </Btn>
 
         <div style={{ height: 10 }} />
 
-        {/* Statistikk-knapp */}
         <Btn variant="ghost" onClick={goToStats}>
           📊 Statistikk & historikk
         </Btn>

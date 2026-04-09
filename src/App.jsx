@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from "react";
 import supabase from "./logic/supabase";
+import { useAuth } from "./hooks/useAuth";
 import { useSession } from "./hooks/useSession";
 import { computeStats } from "./logic/stats";
 
-import Toast   from "./components/Toast";
+import Toast from "./components/Toast";
 
+// Auth-skjermer
+import ClubSelect  from "./screens/ClubSelect";
+import PinScreen   from "./screens/PinScreen";
+import CreateClub  from "./screens/CreateClub";
+
+// App-skjermer
 import Home          from "./screens/Home";
 import Session       from "./screens/Session";
 import Stats         from "./screens/Stats";
@@ -17,9 +24,15 @@ import { computeFunStats } from "./logic/funStats";
 import DailyStatsPopup from "./components/DailyStatsPopup";
 
 export default function App() {
+  // ── Auth ──
+  const auth = useAuth();
+
+  // ── Klubbsøk (lokal state for søkefeltet) ──
+  const [clubSearch, setClubSearch] = useState("");
+
   // ── Navigasjon ──
-  const [screen, setScreen]           = useState("home");
-  const [statsTab, setStatsTab]       = useState("session");
+  const [screen, setScreen]               = useState("home");
+  const [statsTab, setStatsTab]           = useState("session");
   const [detailSession, setDetailSession] = useState(null);
 
   // ── Daglig popup ──
@@ -31,7 +44,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    const last = localStorage.getItem("lastDailyStats");
+    const last  = localStorage.getItem("lastDailyStats");
     const today = new Date().toDateString();
     if (last !== today) setShowDailyStats(true);
   }, []);
@@ -40,8 +53,8 @@ export default function App() {
   const [players, setPlayers] = useState([]);
   const [newName, setNewName] = useState("");
 
-  // ── Økt-hook ──
-  const sess = useSession(players);
+  // ── Økt-hook (sender med club så alle kall filtreres) ──
+  const sess = useSession(players, auth.club);
 
   // ── Avledede verdier ──
   const activePlayers       = players.filter((p) => sess.checkedIn.includes(p.id));
@@ -49,8 +62,9 @@ export default function App() {
   const playerName          = (id) => players.find((p) => p.id === id)?.name || "?";
   const playerIdx           = (id) => players.findIndex((p) => p.id === id);
 
-  // ── Init ──
+  // ── Last spillere når man er innlogget ──
   useEffect(() => {
+    if (auth.authState !== "app" || !auth.club) return;
     loadPlayers();
     sess.loadAll();
     const ch = supabase
@@ -62,17 +76,24 @@ export default function App() {
       )
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, []);
+  }, [auth.authState, auth.club?.id]);
 
   async function loadPlayers() {
-    const { data } = await supabase.from("players").select("*").order("name");
+    if (!auth.club) return;
+    const { data } = await supabase
+      .from("players")
+      .select("*")
+      .eq("club_id", auth.club.id)
+      .order("name");
     if (data) setPlayers(data);
   }
 
   async function addPlayer() {
     const name = newName.trim();
-    if (!name) return;
-    const { error } = await supabase.from("players").insert({ name });
+    if (!name || !auth.club) return;
+    const { error } = await supabase
+      .from("players")
+      .insert({ name, club_id: auth.club.id });
     if (error) sess.showToast("Feil ved lagring", "error");
     else {
       setNewName("");
@@ -94,6 +115,14 @@ export default function App() {
   async function handleEndSession() {
     const ok = await sess.endSession();
     if (ok) setScreen("home");
+  }
+
+  // ── Logg ut: nullstill app-state ──
+  async function handleLogout() {
+    await auth.logout();
+    setPlayers([]);
+    setNewName("");
+    setScreen("home");
   }
 
   // ── Avslutt-modal ──
@@ -158,7 +187,71 @@ export default function App() {
     </div>
   );
 
-  // ── RENDER ──
+  // ─── AUTH-SKJERMER ────────────────────────────────────────────────────────
+
+  if (auth.authState === "loading") {
+    return (
+      <div
+        style={{
+          minHeight: "100dvh",
+          background: "#020617",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <span style={{ fontSize: 48 }}>🏸</span>
+        <div style={{ color: "#475569", fontSize: 15, fontFamily: "'Barlow',sans-serif" }}>
+          Laster...
+        </div>
+      </div>
+    );
+  }
+
+  if (auth.authState === "clubs") {
+    return (
+      <ClubSelect
+        clubs={auth.clubs}
+        clubSearch={clubSearch}
+        setClubSearch={setClubSearch}
+        onSelect={auth.selectClub}
+        onCreateNew={() => auth.setAuthState("create")}
+      />
+    );
+  }
+
+  if (auth.authState === "pin") {
+    return (
+      <PinScreen
+        club={auth.club}
+        onSubmit={auth.submitPin}
+        onBack={() => auth.setAuthState("clubs")}
+        pinError={auth.pinError}
+        loading={auth.loading}
+      />
+    );
+  }
+
+  if (auth.authState === "create") {
+    return (
+      <CreateClub
+        newClubName={auth.newClubName}   setNewClubName={auth.setNewClubName}
+        newClubPin={auth.newClubPin}     setNewClubPin={auth.setNewClubPin}
+        newClubPin2={auth.newClubPin2}   setNewClubPin2={auth.setNewClubPin2}
+        newClubEmail={auth.newClubEmail} setNewClubEmail={auth.setNewClubEmail}
+        newClubColor={auth.newClubColor} setNewClubColor={auth.setNewClubColor}
+        createClub={auth.createClub}
+        loading={auth.loading}
+        onBack={() => auth.setAuthState("clubs")}
+        showToast={sess.showToast}
+      />
+    );
+  }
+
+  // ─── APP (innlogget) ──────────────────────────────────────────────────────
+
   const funStats = computeFunStats(sess.allMatches, sess.allSessions, players);
 
   return (
@@ -185,6 +278,9 @@ export default function App() {
           startSession={handleStartSession}
           loading={sess.loading}
           goToStats={() => { setStatsTab("total"); setScreen("stats"); }}
+          // Nye props
+          club={auth.club}
+          onLogout={handleLogout}
         />
       )}
 
