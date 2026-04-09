@@ -218,7 +218,7 @@ export default function App() {
           // Legg til
           notInSessionPlayers={notInSessionPlayers}
           addPlayerToOngoingSession={(id) =>
-            sess.addPlayerToOngoingSession(id, playerName(id))
+            sess.addPlayerToOngoingSession(id, playerName(id), activePlayers)
           }
           // Fjern — sender med nødvendig snapshot-data
           inSessionPlayers={activePlayers}
