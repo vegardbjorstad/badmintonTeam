@@ -209,6 +209,7 @@ export default function App() {
           sessionMatches={sess.sessionMatches}
           undoLast={() => sess.undoLast(activePlayers)}
           saveMatch={() => sess.saveMatch(activePlayers)}
+          discardMatch={() => sess.discardMatch(activePlayers)}
           loading={sess.loading}
           setScreen={setScreen} setStatsTab={setStatsTab}
           startEndConfirm={() => sess.setShowEndConfirm(true)}
