@@ -9,22 +9,15 @@ import ScoreBig from "../components/ScoreBig";
 /**
  * Session-skjermen
  * ----------------
- * Viser én kamp av gangen, score, kø, og knapper for å:
- *  - lagre kamp
- *  - angre siste kamp
- *  - vise tabell
- *  - legge til spillere
- *  - avslutte økt
+ * Endret fra original:
+ *   - "Legg til spillere"-panelet er utvidet til "Administrer spillere"
+ *   - Viser aktive spillere med "Fjern"-knapp
+ *   - Viser ikke-aktive spillere med "Legg til"-knapp
  *
- * Props forventet fra App.jsx:
- *   currentMatch, matchNumber, score, setScore,
- *   playerName, playerIdx, sessionMatches,
- *   undoLast, saveMatch, loading,
- *   setScreen, setStatsTab, startEndConfirm,
- *   showAddPlayers, setShowAddPlayers,
- *   notInSessionPlayers, addPlayerToOngoingSession
+ * Nye props:
+ *   inSessionPlayers         — spillere som er med i økten nå
+ *   removePlayerFromSession  — fn(id) for å fjerne spiller
  */
-
 export default function Session({
   currentMatch,
   matchNumber,
@@ -43,6 +36,9 @@ export default function Session({
   setShowAddPlayers,
   notInSessionPlayers,
   addPlayerToOngoingSession,
+  // Nye props
+  inSessionPlayers,
+  removePlayerFromSession,
 }) {
   if (!currentMatch) {
     return <div style={{ padding: 20, color: "#f8fafc" }}>Ingen kamp</div>;
@@ -64,43 +60,29 @@ export default function Session({
         <button
           onClick={() => setScreen("home")}
           style={{
-            background: "none",
-            border: "none",
-            color: "#94a3b8",
-            fontSize: 22,
-            cursor: "pointer",
-            padding: 4,
+            background: "none", border: "none",
+            color: "#94a3b8", fontSize: 22, cursor: "pointer", padding: 4,
           }}
         >
           ←
         </button>
-
         <div
           style={{
             fontFamily: "'Barlow Condensed',sans-serif",
-            fontSize: 22,
-            fontWeight: 800,
-            color: "#38bdf8",
-            letterSpacing: "0.04em",
-            flex: 1,
+            fontSize: 22, fontWeight: 800,
+            color: "#38bdf8", letterSpacing: "0.04em", flex: 1,
           }}
         >
           {`KAMP ${matchNumber}`}
         </div>
-
         <button
           onClick={startEndConfirm}
           style={{
-            background: "none",
-            border: "2px solid #7f1d1d",
-            borderRadius: 10,
-            color: "#ef4444",
+            background: "none", border: "2px solid #7f1d1d",
+            borderRadius: 10, color: "#ef4444",
             fontFamily: "'Barlow Condensed',sans-serif",
-            fontWeight: 700,
-            fontSize: 13,
-            padding: "6px 14px",
-            cursor: "pointer",
-            letterSpacing: "0.06em",
+            fontWeight: 700, fontSize: 13,
+            padding: "6px 14px", cursor: "pointer", letterSpacing: "0.06em",
           }}
         >
           AVSLUTT ØKT
@@ -110,149 +92,163 @@ export default function Session({
       {/* MAIN CONTENT */}
       <div style={{ padding: 16 }}>
 
-        {/* S2 — Legg til spillere underveis i økten */}
+        {/* ADMINISTRER SPILLERE */}
         <div style={{ marginBottom: 16 }}>
           <Btn
             variant="ghost"
-            onClick={() => setShowAddPlayers(true)}
-            style={{ marginBottom: 12 }}
+            onClick={() => setShowAddPlayers(!showAddPlayers)}
+            style={{ marginBottom: showAddPlayers ? 12 : 0 }}
           >
-            ➕ Legg til spillere
+            👥 Administrer spillere ({inSessionPlayers.length} inne)
           </Btn>
 
           {showAddPlayers && (
             <Card style={{ padding: "16px 18px", marginBottom: 16 }}>
-              <Label>LEGG TIL SPILLERE I ØKTA</Label>
 
-              {notInSessionPlayers.length === 0 && (
-                <div style={{ color: "#64748b", padding: "12px 0" }}>
-                  Ingen flere spillere tilgjengelig
-                </div>
-              )}
-
-              {notInSessionPlayers.map((p, i) => (
-                <div
-                  key={p.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "10px 0",
-                    borderBottom:
-                      i < notInSessionPlayers.length - 1
-                        ? "1px solid #1e293b"
-                        : "none",
-                  }}
-                >
-                  <Avatar name={p.name} size={40} colorIndex={i} />
-                  <div style={{ flex: 1, fontSize: 16, fontWeight: 600 }}>
-                    {p.name}
-                  </div>
-                  <button
-                    onClick={() => addPlayerToOngoingSession(p.id)}
+              {/* Aktive spillere — kan fjernes */}
+              <Label>I ØKTEN NÅ</Label>
+              {inSessionPlayers.map((p, i) => {
+                const inMatch = currentMatch &&
+                  [...currentMatch.team1, ...currentMatch.team2].includes(p.id);
+                return (
+                  <div
+                    key={p.id}
                     style={{
-                      background: "none",
-                      border: "2px solid #38bdf8",
-                      color: "#38bdf8",
-                      padding: "4px 10px",
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      fontSize: 14,
-                      fontWeight: 700,
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "10px 0",
+                      borderBottom: i < inSessionPlayers.length - 1 ? "1px solid #1e293b" : "none",
                     }}
                   >
-                    Legg til
-                  </button>
-                </div>
-              ))}
+                    <Avatar name={p.name} size={40} colorIndex={playerIdx(p.id)} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "#f8fafc" }}>
+                        {p.name}
+                      </div>
+                      {inMatch && (
+                        <div style={{ fontSize: 11, color: "#38bdf8", fontWeight: 600 }}>
+                          spiller nå
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removePlayerFromSession(p.id)}
+                      style={{
+                        background: "none",
+                        border: "2px solid #7f1d1d",
+                        color: "#ef4444",
+                        padding: "4px 10px",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: "'Barlow Condensed',sans-serif",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Fjern
+                    </button>
+                  </div>
+                );
+              })}
 
-              <Btn
-                variant="ghost"
-                style={{ marginTop: 12 }}
-                onClick={() => setShowAddPlayers(false)}
-              >
+              {/* Skillelinje hvis begge seksjoner har innhold */}
+              {notInSessionPlayers.length > 0 && (
+                <div style={{ height: 1, background: "#1e3a5f", margin: "16px 0" }} />
+              )}
+
+              {/* Ikke-aktive spillere — kan legges til */}
+              {notInSessionPlayers.length > 0 && (
+                <>
+                  <Label>LEGG TIL I ØKTEN</Label>
+                  {notInSessionPlayers.map((p, i) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "10px 0",
+                        borderBottom: i < notInSessionPlayers.length - 1 ? "1px solid #1e293b" : "none",
+                      }}
+                    >
+                      <Avatar name={p.name} size={40} colorIndex={playerIdx(p.id)} />
+                      <div style={{ flex: 1, fontSize: 16, fontWeight: 600, color: "#94a3b8" }}>
+                        {p.name}
+                      </div>
+                      <button
+                        onClick={() => addPlayerToOngoingSession(p.id)}
+                        style={{
+                          background: "none",
+                          border: "2px solid #38bdf8",
+                          color: "#38bdf8",
+                          padding: "4px 10px",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          fontFamily: "'Barlow Condensed',sans-serif",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        Legg til
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <Btn variant="ghost" style={{ marginTop: 12 }} onClick={() => setShowAddPlayers(false)}>
                 Lukk
               </Btn>
             </Card>
           )}
         </div>
 
-        {/* S3-A — LAG 1 */}
+        {/* LAG 1 */}
         <Card style={{ marginBottom: 14 }}>
           <div style={{ padding: "18px 18px 10px" }}>
             <Label>LAG 1 🟠</Label>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {currentMatch.team1.map((id) => (
-                <div
-                  key={id}
-                  style={{ display: "flex", alignItems: "center", gap: 10 }}
-                >
+                <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <Avatar name={playerName(id)} size={48} colorIndex={playerIdx(id)} />
-                  <span style={{ fontSize: 18, fontWeight: 600 }}>
-                    {playerName(id)}
-                  </span>
+                  <span style={{ fontSize: 18, fontWeight: 600 }}>{playerName(id)}</span>
                 </div>
               ))}
             </div>
           </div>
         </Card>
 
-        {/* S3-B — VS-separator */}
+        {/* VS */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "0 18px",
-            marginBottom: 10,
+            display: "flex", alignItems: "center",
+            gap: 10, padding: "0 18px", marginBottom: 10,
           }}
         >
           <div style={{ flex: 1, height: 1, background: "#1e3a5f" }} />
-          <span
-            style={{
-              fontFamily: "'Barlow Condensed',sans-serif",
-              fontWeight: 800,
-              fontSize: 13,
-              color: "#475569",
-              letterSpacing: "0.1em",
-            }}
-          >
+          <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#475569", letterSpacing: "0.1em" }}>
             VS
           </span>
           <div style={{ flex: 1, height: 1, background: "#1e3a5f" }} />
         </div>
 
-        {/* S3-C — LAG 2 */}
+        {/* LAG 2 */}
         <Card style={{ marginBottom: 14 }}>
           <div style={{ padding: "10px 18px 18px" }}>
             <Label>LAG 2 🟣</Label>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {currentMatch.team2.map((id) => (
-                <div
-                  key={id}
-                  style={{ display: "flex", alignItems: "center", gap: 10 }}
-                >
+                <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <Avatar name={playerName(id)} size={48} colorIndex={playerIdx(id)} />
-                  <span style={{ fontSize: 18, fontWeight: 600 }}>
-                    {playerName(id)}
-                  </span>
+                  <span style={{ fontSize: 18, fontWeight: 600 }}>{playerName(id)}</span>
                 </div>
               ))}
             </div>
           </div>
         </Card>
 
-        {/* S4 — Sittende spillere */}
+        {/* VENTER */}
         {currentMatch.sitting.length > 0 && (
-          <Card
-            style={{
-              marginBottom: 14,
-              padding: "14px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
+          <Card style={{ marginBottom: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 22 }}>⏳</span>
             <div>
               <Label>VENTER DENNE KAMPEN</Label>
@@ -263,54 +259,21 @@ export default function Session({
           </Card>
         )}
 
-        {/* S5 — Score-seksjon */}
+        {/* SCORE */}
         <Card style={{ marginBottom: 14, padding: "18px" }}>
           <Label>KAMPRESULTAT</Label>
           <div style={{ display: "flex", alignItems: "center" }}>
-
-            {/* Score Lag 1 */}
             <div style={{ flex: 1, textAlign: "center" }}>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#f97316",
-                  fontWeight: 700,
-                  marginBottom: 8,
-                }}
-              >
-                LAG 1
-              </div>
+              <div style={{ fontSize: 12, color: "#f97316", fontWeight: 700, marginBottom: 8 }}>LAG 1</div>
               <ScoreBig
                 value={score.t1}
                 onChange={(v) => setScore({ ...score, t1: v })}
                 win={score.t1 > score.t2}
               />
             </div>
-
-            <div
-              style={{
-                padding: "0 12px",
-                color: "#334155",
-                fontSize: 28,
-                fontWeight: 700,
-                paddingTop: 24,
-              }}
-            >
-              —
-            </div>
-
-            {/* Score Lag 2 */}
+            <div style={{ padding: "0 12px", color: "#334155", fontSize: 28, fontWeight: 700, paddingTop: 24 }}>—</div>
             <div style={{ flex: 1, textAlign: "center" }}>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#6366f1",
-                  fontWeight: 700,
-                  marginBottom: 8,
-                }}
-              >
-                LAG 2
-              </div>
+              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 700, marginBottom: 8 }}>LAG 2</div>
               <ScoreBig
                 value={score.t2}
                 onChange={(v) => setScore({ ...score, t2: v })}
@@ -320,7 +283,7 @@ export default function Session({
           </div>
         </Card>
 
-        {/* S6 — Handlingsknapper */}
+        {/* HANDLINGSKNAPPER */}
         <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
           <Btn
             variant="ghost"
@@ -330,16 +293,12 @@ export default function Session({
           >
             ↩ Angre
           </Btn>
-          <Btn
-            onClick={saveMatch}
-            disabled={loading}
-            style={{ flex: 2 }}
-          >
+          <Btn onClick={saveMatch} disabled={loading} style={{ flex: 2 }}>
             {loading ? "Lagrer…" : "Lagre kamp ✓"}
           </Btn>
         </div>
 
-        {/* S7 — Vis tabell-knapp */}
+        {/* TABELL */}
         <Btn
           variant="ghost"
           onClick={() => { setStatsTab("table"); setScreen("stats"); }}
@@ -348,28 +307,20 @@ export default function Session({
           📊 Vis tabell
         </Btn>
 
-        {/* S8 — Kamper denne økten */}
+        {/* KAMP-LOGG */}
         <Card style={{ marginBottom: 14, padding: "14px 16px" }}>
           <Label>KAMPER DENNE ØKTEN ({sessionMatches.length})</Label>
-
           {sessionMatches.length === 0 && (
             <div style={{ color: "#64748b", paddingTop: 8 }}>Ingen kamper ennå</div>
           )}
-
           {[...sessionMatches].reverse().map((m, i) => (
             <div
               key={m.id ?? i}
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto 1fr",
-                alignItems: "center",
-                padding: "8px 0",
-                borderBottom: i < sessionMatches.length - 1
-                  ? "1px solid #1e293b"
-                  : "none",
-                fontSize: 13,
-                color: "#94a3b8",
-                gap: 8,
+                display: "grid", gridTemplateColumns: "1fr auto 1fr",
+                alignItems: "center", padding: "8px 0",
+                borderBottom: i < sessionMatches.length - 1 ? "1px solid #1e293b" : "none",
+                fontSize: 13, color: "#94a3b8", gap: 8,
               }}
             >
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
