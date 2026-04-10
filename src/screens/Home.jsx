@@ -4,6 +4,7 @@ import { useState } from "react";
 import Avatar from "../components/Avatar";
 import Btn from "../components/Btn";
 import Label from "../components/Label";
+import PushSettings from "../components/PushSettings";
 
 export default function Home({
   players,
@@ -333,6 +334,16 @@ export default function Home({
             </div>
           )}
         </div>
+
+        {/* Push-varsler */}
+        {push && (
+          <PushSettings
+            push={push}
+            club={club}
+            nextTraining={nextTraining}
+            onSaveTraining={onSaveTraining}
+          />
+        )}
 
         {/* Start økt */}
         <Btn

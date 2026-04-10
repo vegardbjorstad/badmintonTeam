@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import supabase from "./logic/supabase";
 import { useAuth } from "./hooks/useAuth";
+import { usePush } from "./hooks/usePush";
 import { useSession } from "./hooks/useSession";
 import { computeStats } from "./logic/stats";
 
@@ -44,6 +45,7 @@ export default function App() {
   const [newName, setNewName] = useState("");
 
   const sess = useSession(players, auth.club);
+  const push = usePush(auth.club);
 
   // Spillere som er med i økten nå
   const activePlayers       = players.filter((p) => sess.checkedIn.includes(p.id));
@@ -96,6 +98,12 @@ export default function App() {
     }
     await loadPlayers();
     sess.showToast("Navn oppdatert ✓", "success");
+  }
+
+  async function saveNextTraining(datetime) {
+    if (!auth.club) return;
+    await supabase.from("clubs").update({ next_training: new Date(datetime).toISOString() }).eq("id", auth.club.id);
+    sess.showToast("Treningsdato lagret ✓", "success");
   }
 
   async function removePlayer(id) {
@@ -226,6 +234,9 @@ export default function App() {
           goToStats={() => { setStatsTab("total"); setScreen("stats"); }}
           club={auth.club}
           onLogout={handleLogout}
+          push={push}
+          nextTraining={auth.club?.next_training}
+          onSaveTraining={saveNextTraining}
         />
       )}
 
