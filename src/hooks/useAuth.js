@@ -79,7 +79,15 @@ export function useAuth() {
         .eq("club_id", savedClub.id)
         .single();
       if (data && new Date(data.expires_at) > new Date()) {
-        setClub(savedClub);
+        // Hent ferske klubbdata fra DB inkl. next_training og andre nye felter
+        const { data: freshClub } = await supabase
+          .from("clubs")
+          .select("*")
+          .eq("id", savedClub.id)
+          .single();
+        const clubToUse = freshClub || savedClub;
+        localStorage.setItem("badminton_club", JSON.stringify(clubToUse));
+        setClub(clubToUse);
         setAuthState("app");
       } else {
         localStorage.removeItem(TOKEN_KEY);

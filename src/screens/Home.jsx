@@ -188,35 +188,41 @@ export default function Home({
       <div
         style={{
           background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
-          padding: "36px 20px 24px",
+          padding: "28px 20px 20px",
           borderBottom: "2px solid #1e3a5f",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ fontSize: 42 }}>🏸</span>
-          <div>
-            <div
-              style={{
-                fontFamily: "'Barlow Condensed',sans-serif",
-                fontSize: 32,
-                fontWeight: 800,
-                lineHeight: 1,
-                color: "#38bdf8",
-              }}
-            >
-              BADMINTON
+          <div style={{
+            width: 48, height: 48, borderRadius: "50%",
+            background: club?.color || "#38bdf8",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontWeight: 800, fontSize: 18, color: "#fff",
+            fontFamily: "'Barlow Condensed',sans-serif", flexShrink: 0,
+          }}>
+            {club ? club.name.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2) : "🏸"}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontFamily: "'Barlow Condensed',sans-serif",
+              fontSize: 20, fontWeight: 800, lineHeight: 1,
+              color: club?.color || "#38bdf8", letterSpacing: "0.02em",
+            }}>
+              {club?.name || "BADMINTON"}
             </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "#94a3b8",
-                fontWeight: 600,
-                letterSpacing: "0.12em",
-              }}
-            >
+            <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, letterSpacing: "0.1em", marginTop: 2 }}>
               TRENINGSAPP
             </div>
           </div>
+          {onLogout && (
+            <button onClick={onLogout} style={{
+              background: "none", border: "none", color: "#475569",
+              fontSize: 13, cursor: "pointer", fontFamily: "'Barlow',sans-serif",
+              padding: "4px 8px",
+            }}>
+              Logg ut
+            </button>
+          )}
         </div>
       </div>
 
