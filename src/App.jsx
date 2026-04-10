@@ -100,7 +100,14 @@ export default function App() {
     sess.showToast("Navn oppdatert ✓", "success");
   }
 
-  const [nextTraining, setNextTraining] = useState(auth.club?.next_training || null);
+  const [nextTraining, setNextTraining] = useState(null);
+
+  // Oppdater nextTraining naar auth.club er klar (asynkron)
+  useEffect(() => {
+    if (auth.club?.next_training) {
+      setNextTraining(auth.club.next_training);
+    }
+  }, [auth.club?.next_training]);
 
   async function saveNextTraining(datetime) {
     if (!auth.club) return;
@@ -110,7 +117,6 @@ export default function App() {
       .update({ next_training: iso })
       .eq("id", auth.club.id);
     if (error) { sess.showToast("Feil ved lagring av treningsdato", "error"); return; }
-    // Oppdater lokal state og localStorage
     setNextTraining(iso);
     const updatedClub = { ...auth.club, next_training: iso };
     localStorage.setItem("badminton_club", JSON.stringify(updatedClub));
