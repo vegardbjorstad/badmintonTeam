@@ -100,9 +100,20 @@ export default function App() {
     sess.showToast("Navn oppdatert ✓", "success");
   }
 
+  const [nextTraining, setNextTraining] = useState(auth.club?.next_training || null);
+
   async function saveNextTraining(datetime) {
     if (!auth.club) return;
-    await supabase.from("clubs").update({ next_training: new Date(datetime).toISOString() }).eq("id", auth.club.id);
+    const iso = new Date(datetime).toISOString();
+    const { error } = await supabase
+      .from("clubs")
+      .update({ next_training: iso })
+      .eq("id", auth.club.id);
+    if (error) { sess.showToast("Feil ved lagring av treningsdato", "error"); return; }
+    // Oppdater lokal state og localStorage
+    setNextTraining(iso);
+    const updatedClub = { ...auth.club, next_training: iso };
+    localStorage.setItem("badminton_club", JSON.stringify(updatedClub));
     sess.showToast("Treningsdato lagret ✓", "success");
   }
 
@@ -235,7 +246,7 @@ export default function App() {
           club={auth.club}
           onLogout={handleLogout}
           push={push}
-          nextTraining={auth.club?.next_training}
+          nextTraining={nextTraining}
           onSaveTraining={saveNextTraining}
         />
       )}
