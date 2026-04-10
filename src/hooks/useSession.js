@@ -217,6 +217,15 @@ export function useSession(players, club) {
     showToast("Økt flyttet til arkiv", "warning");
   }
 
+  // ── Skjul økt fra arkiv (data beholdes i DB) ───────────────────────────
+  async function hideSession(sessionId) {
+    const { error } = await supabase.from("sessions")
+      .update({ hidden: true }).eq("id", sessionId);
+    if (error) { showToast("Feil: kunne ikke skjule økten", "error"); return; }
+    await loadAll();
+    showToast("Økt skjult fra arkiv ✓", "info");
+  }
+
   async function restoreSession(sessionId) {
     await supabase.from("sessions").update({ deleted_at: null }).eq("id", sessionId);
     await loadAll();
@@ -225,17 +234,42 @@ export function useSession(players, club) {
 
   // ── Permanent sletting av økt ───────────────────────────────────────────────
   async function permanentDeleteSession(sessionId) {
-    // Slett tilhørende pauser og kamper først (cascade burde ta seg av det,
-    // men vi gjør det eksplisitt for sikkerhetsskyld)
-    await supabase.from("match_pauses").delete().eq("session_id", sessionId);
-    await supabase.from("matches").delete().eq("session_id", sessionId);
-    const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
-    if (error) {
-      showToast("Feil: kunne ikke slette økten", "error");
-      return;
+    // Steg 1: Hent alle match-IDer for denne økten
+    const { data: matchRows } = await supabase
+      .from("matches")
+      .select("id")
+      .eq("session_id", sessionId);
+
+    const matchIds = (matchRows || []).map((m) => m.id);
+
+    // Steg 2: Slett match_pauses som refererer til disse kampene
+    if (matchIds.length > 0) {
+      const { error: e1 } = await supabase
+        .from("match_pauses")
+        .delete()
+        .in("match_id", matchIds);
+      if (e1) { showToast("Feil ved sletting av pauser", "error"); console.error(e1); return; }
     }
+
+    // Steg 3: Slett match_pauses via session_id (sikkerhetsnett)
+    await supabase.from("match_pauses").delete().eq("session_id", sessionId);
+
+    // Steg 4: Slett kamper
+    const { error: e2 } = await supabase
+      .from("matches")
+      .delete()
+      .eq("session_id", sessionId);
+    if (e2) { showToast("Feil ved sletting av kamper", "error"); console.error(e2); return; }
+
+    // Steg 5: Slett økten
+    const { error: e3 } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", sessionId);
+    if (e3) { showToast("Feil ved sletting av økt", "error"); console.error(e3); return; }
+
     await loadAll();
-    showToast("Økt slettet permanent", "info");
+    showToast("Økt slettet permanent ✓", "info");
   }
 
   // ── Avledede verdier ──
@@ -253,7 +287,7 @@ export function useSession(players, club) {
   const totalStats = computeStats(activeMatches, activePauses, players);
 
   const sessionList = allSessions
-    .filter((s) => !s.deleted_at)
+    .filter((s) => !s.deleted_at && !s.hidden)
     .map((s) => {
       const sMatches = allMatches.filter((m) => m.session_id === s.id);
       const sPauses  = allPauses.filter((p) => p.session_id === s.id);
@@ -281,7 +315,7 @@ export function useSession(players, club) {
     addPlayerToOngoingSession,
     discardMatch,
     removePlayerFromSession,
-    softDeleteSession, restoreSession, permanentDeleteSession,
+    softDeleteSession, hideSession, restoreSession, permanentDeleteSession,
     sessionStats, totalStats, sessionList,
   };
 }

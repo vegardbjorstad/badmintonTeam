@@ -68,7 +68,11 @@ export default function App() {
   async function loadPlayers() {
     if (!auth.club) return;
     const { data } = await supabase
-      .from("players").select("*").eq("club_id", auth.club.id).order("name");
+      .from("players")
+      .select("*")
+      .eq("club_id", auth.club.id)
+      .or("hidden.is.null,hidden.eq.false")  // filtrer bort skjulte spillere (null = ikke satt)
+      .order("name");
     if (data) setPlayers(data);
   }
 
@@ -81,9 +85,34 @@ export default function App() {
     else { setNewName(""); sess.showToast(`${name} lagt til ✓`, "success"); }
   }
 
+  async function renamePlayer(id, newName) {
+    const { error } = await supabase
+      .from("players")
+      .update({ name: newName })
+      .eq("id", id);
+    if (error) {
+      sess.showToast("Feil ved lagring av navn", "error");
+      return;
+    }
+    await loadPlayers();
+    sess.showToast("Navn oppdatert ✓", "success");
+  }
+
   async function removePlayer(id) {
-    await supabase.from("players").delete().eq("id", id);
+    // Soft delete — skjuler spilleren uten å slette kampdata
+    const { error } = await supabase
+      .from("players")
+      .update({ hidden: true })
+      .eq("id", id);
+    if (error) {
+      sess.showToast("Feil ved fjerning av spiller", "error");
+      console.error("removePlayer error:", error);
+      return;
+    }
     sess.setCheckedIn((prev) => prev.filter((x) => x !== id));
+    // Last spillere på nytt eksplisitt så listen oppdateres umiddelbart
+    await loadPlayers();
+    sess.showToast("Spiller fjernet ✓", "info");
   }
 
   async function handleStartSession() {
@@ -185,7 +214,7 @@ export default function App() {
         <Home
           players={players}
           newName={newName} setNewName={setNewName}
-          addPlayer={addPlayer} removePlayer={removePlayer}
+          addPlayer={addPlayer} removePlayer={removePlayer} renamePlayer={renamePlayer}
           checkedIn={sess.checkedIn}
           toggleCheckIn={(id) =>
             sess.setCheckedIn((prev) =>
@@ -246,7 +275,7 @@ export default function App() {
           setDetailSession={setDetailSession}
           setScreen={setScreen}
           restoreSession={sess.restoreSession}
-          permanentDeleteSession={sess.permanentDeleteSession}
+          hideSession={sess.hideSession}
         />
       )}
 

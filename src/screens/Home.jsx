@@ -1,23 +1,10 @@
 // src/screens/Home.jsx
 
+import { useState } from "react";
 import Avatar from "../components/Avatar";
 import Btn from "../components/Btn";
 import Label from "../components/Label";
 
-const getInitials = (name) =>
-  name.trim().split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-
-/**
- * Home
- * ----
- * Endret fra original:
- *   - Viser klubbnavn og klubbfarge i header (fra `club`-prop)
- *   - Logout-knapp øverst til høyre
- *   - Klubbfarge brukes på check-in-border og +-knapp
- *
- * Nye props: club, onLogout
- * Uendrede props: alle originale props
- */
 export default function Home({
   players,
   checkedIn,
@@ -25,90 +12,205 @@ export default function Home({
   setNewName,
   addPlayer,
   removePlayer,
+  renamePlayer,
   toggleCheckIn,
   loading,
   startSession,
   goToStats,
-  // Nye props
-  club,
-  onLogout,
 }) {
-  const clubColor = club?.color || "#38bdf8";
+  const [confirmDelete, setConfirmDelete] = useState(null); // spiller som venter på bekreftelse
+  const [editPlayer, setEditPlayer]       = useState(null);  // spiller som redigeres
+  const [editName, setEditName]           = useState("");
 
   return (
     <>
+      {/* Bekreft sletting av spiller */}
+      {confirmDelete && (
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.80)",
+          zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24,
+        }}>
+          <div style={{
+            background: "#0f172a",
+            border: "2px solid #334155",
+            borderRadius: 20,
+            padding: 28,
+            maxWidth: 340,
+            width: "100%",
+          }}>
+            <div style={{
+              fontFamily: "'Barlow Condensed',sans-serif",
+              fontSize: 22, fontWeight: 800,
+              color: "#f8fafc", marginBottom: 8,
+            }}>
+              Fjern spiller?
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: 15, marginBottom: 6 }}>
+              <strong style={{ color: "#f8fafc" }}>{confirmDelete.name}</strong> skjules fra spillerlisten.
+            </div>
+            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 24 }}>
+              Statistikk og kamphistorikk beholdes i databasen.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                style={{
+                  flex: 1, height: 50, borderRadius: 14,
+                  border: "2px solid #1e3a5f",
+                  background: "none", color: "#94a3b8",
+                  fontFamily: "'Barlow Condensed',sans-serif",
+                  fontWeight: 800, fontSize: 15, cursor: "pointer",
+                }}
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={() => {
+                  removePlayer(confirmDelete.id);
+                  setConfirmDelete(null);
+                }}
+                style={{
+                  flex: 1, height: 50, borderRadius: 14,
+                  border: "none",
+                  background: "linear-gradient(135deg,#dc2626,#991b1b)",
+                  color: "#fff",
+                  fontFamily: "'Barlow Condensed',sans-serif",
+                  fontWeight: 800, fontSize: 15, cursor: "pointer",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Fjern
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rediger spillernavn */}
+      {editPlayer && (
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.80)",
+          zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24,
+        }}>
+          <div style={{
+            background: "#0f172a",
+            border: "2px solid #334155",
+            borderRadius: 20,
+            padding: 28,
+            maxWidth: 340,
+            width: "100%",
+          }}>
+            <div style={{
+              fontFamily: "'Barlow Condensed',sans-serif",
+              fontSize: 22, fontWeight: 800,
+              color: "#f8fafc", marginBottom: 16,
+            }}>
+              Endre navn
+            </div>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && editName.trim()) {
+                  renamePlayer(editPlayer.id, editName.trim());
+                  setEditPlayer(null);
+                }
+                if (e.key === "Escape") setEditPlayer(null);
+              }}
+              autoFocus
+              style={{
+                width: "100%",
+                height: 52,
+                borderRadius: 12,
+                border: "2px solid #38bdf8",
+                background: "#0f172a",
+                color: "#f8fafc",
+                fontSize: 18,
+                padding: "0 16px",
+                outline: "none",
+                fontFamily: "'Barlow',sans-serif",
+                boxSizing: "border-box",
+                marginBottom: 16,
+              }}
+            />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setEditPlayer(null)}
+                style={{
+                  flex: 1, height: 50, borderRadius: 14,
+                  border: "2px solid #1e3a5f",
+                  background: "none", color: "#94a3b8",
+                  fontFamily: "'Barlow Condensed',sans-serif",
+                  fontWeight: 800, fontSize: 15, cursor: "pointer",
+                }}
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={() => {
+                  if (editName.trim()) {
+                    renamePlayer(editPlayer.id, editName.trim());
+                    setEditPlayer(null);
+                  }
+                }}
+                disabled={!editName.trim()}
+                style={{
+                  flex: 1, height: 50, borderRadius: 14,
+                  border: "none",
+                  background: editName.trim()
+                    ? "linear-gradient(135deg,#38bdf8,#6366f1)"
+                    : "#1e293b",
+                  color: editName.trim() ? "#fff" : "#475569",
+                  fontFamily: "'Barlow Condensed',sans-serif",
+                  fontWeight: 800, fontSize: 15, cursor: editName.trim() ? "pointer" : "default",
+                }}
+              >
+                Lagre
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div
         style={{
           background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
-          padding: "28px 20px 20px",
+          padding: "36px 20px 24px",
           borderBottom: "2px solid #1e3a5f",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* Klubb-avatar med farge */}
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              background: clubColor,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 800,
-              fontSize: 18,
-              color: "#fff",
-              fontFamily: "'Barlow Condensed',sans-serif",
-              flexShrink: 0,
-            }}
-          >
-            {club ? getInitials(club.name) : "🏸"}
-          </div>
-
-          <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 42 }}>🏸</span>
+          <div>
             <div
               style={{
                 fontFamily: "'Barlow Condensed',sans-serif",
-                fontSize: 20,
+                fontSize: 32,
                 fontWeight: 800,
                 lineHeight: 1,
-                color: clubColor,
-                letterSpacing: "0.02em",
+                color: "#38bdf8",
               }}
             >
-              {club?.name || "BADMINTON"}
+              BADMINTON
             </div>
             <div
               style={{
-                fontSize: 11,
-                color: "#64748b",
+                fontSize: 12,
+                color: "#94a3b8",
                 fontWeight: 600,
-                letterSpacing: "0.1em",
-                marginTop: 2,
+                letterSpacing: "0.12em",
               }}
             >
               TRENINGSAPP
             </div>
           </div>
-
-          {/* Logg ut */}
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#475569",
-                fontSize: 13,
-                cursor: "pointer",
-                fontFamily: "'Barlow',sans-serif",
-                padding: "4px 8px",
-              }}
-            >
-              Logg ut
-            </button>
-          )}
         </div>
       </div>
 
@@ -142,7 +244,7 @@ export default function Home({
               width: 54,
               height: 54,
               borderRadius: 12,
-              background: clubColor,
+              background: "#38bdf8",
               border: "none",
               color: "#0f172a",
               fontSize: 28,
@@ -172,20 +274,42 @@ export default function Home({
                   borderRadius: 14,
                   cursor: "pointer",
                   background: active ? "#0c2a4a" : "#0f172a",
-                  border: `2px solid ${active ? clubColor : "#1e3a5f"}`,
+                  border: `2px solid ${active ? "#38bdf8" : "#1e3a5f"}`,
                 }}
               >
                 <Avatar name={p.name} size={46} colorIndex={i} />
-                <span style={{ fontSize: 18, fontWeight: 600, flex: 1 }}>
-                  {p.name}
-                </span>
-                <span style={{ fontSize: 22, color: active ? clubColor : "#334155" }}>
+                <span style={{ fontSize: 18, fontWeight: 600, flex: 1 }}>{p.name}</span>
+                <span
+                  style={{
+                    fontSize: 22,
+                    color: active ? "#38bdf8" : "#334155",
+                  }}
+                >
                   {active ? "✓" : "○"}
                 </span>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    removePlayer(p.id);
+                    setEditPlayer(p);
+                    setEditName(p.name);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#64748b",
+                    fontSize: 16,
+                    cursor: "pointer",
+                    padding: "0 4px",
+                    lineHeight: 1,
+                  }}
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(p);
                   }}
                   style={{
                     background: "none",
@@ -215,18 +339,13 @@ export default function Home({
           variant="primary"
           onClick={startSession}
           disabled={checkedIn.length < 4 || loading}
-          style={{
-            background:
-              checkedIn.length >= 4
-                ? `linear-gradient(135deg, ${clubColor}, #6366f1)`
-                : undefined,
-          }}
         >
           {loading ? "STARTER..." : `🏸 START ØKT (${checkedIn.length} spillere)`}
         </Btn>
 
         <div style={{ height: 10 }} />
 
+        {/* Statistikk-knapp */}
         <Btn variant="ghost" onClick={goToStats}>
           📊 Statistikk & historikk
         </Btn>

@@ -42,7 +42,7 @@ export default function Stats({
   setDetailSession,
   setScreen,
   restoreSession,
-  permanentDeleteSession,
+  hideSession,
 }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // session-objekt som venter på bekreftelse
 
@@ -231,13 +231,13 @@ export default function Stats({
                     fontSize: 22, fontWeight: 800,
                     color: "#f8fafc", marginBottom: 8,
                   }}>
-                    Slett permanent?
+                    Skjul økt?
                   </div>
                   <div style={{ color: "#94a3b8", fontSize: 15, marginBottom: 6 }}>
-                    Økten fra <strong style={{ color: "#f8fafc" }}>{fmtDate(confirmDelete.date)}</strong> vil slettes for godt.
+                    Økten fra <strong style={{ color: "#f8fafc" }}>{fmtDate(confirmDelete.date)}</strong> skjules fra arkivet.
                   </div>
                   <div style={{ color: "#64748b", fontSize: 13, marginBottom: 24 }}>
-                    Dette kan ikke angres.
+                    Data beholdes i databasen og påvirker ikke statistikken.
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button
@@ -254,20 +254,20 @@ export default function Stats({
                     </button>
                     <button
                       onClick={() => {
-                        permanentDeleteSession(confirmDelete.id);
+                        hideSession(confirmDelete.id);
                         setConfirmDelete(null);
                       }}
                       style={{
                         flex: 1, height: 50, borderRadius: 14,
                         border: "none",
-                        background: "linear-gradient(135deg,#dc2626,#991b1b)",
+                        background: "linear-gradient(135deg,#475569,#334155)",
                         color: "#fff",
                         fontFamily: "'Barlow Condensed',sans-serif",
                         fontWeight: 800, fontSize: 15, cursor: "pointer",
                         letterSpacing: "0.04em",
                       }}
                     >
-                      🗑 SLETT FOR GODT
+                      🙈 SKJUL FRA ARKIV
                     </button>
                   </div>
                 </div>
@@ -275,14 +275,14 @@ export default function Stats({
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {allSessions.filter((s) => s.deleted_at).length === 0 && (
+              {allSessions.filter((s) => s.deleted_at && !s.hidden).length === 0 && (
                 <div style={{ textAlign: "center", color: "#334155", padding: "60px 0" }}>
                   Ingen slettede økter
                 </div>
               )}
 
               {allSessions
-                .filter((s) => s.deleted_at)
+                .filter((s) => s.deleted_at && !s.hidden)
                 .map((s) => (
                   <div
                     key={s.id}
@@ -326,8 +326,8 @@ export default function Stats({
                         onClick={() => setConfirmDelete(s)}
                         style={{
                           background: "none",
-                          border: "2px solid #7f1d1d",
-                          color: "#ef4444",
+                          border: "2px solid #475569",
+                          color: "#64748b",
                           padding: "6px 10px",
                           borderRadius: 10,
                           cursor: "pointer",
@@ -336,7 +336,7 @@ export default function Stats({
                           fontSize: 13,
                         }}
                       >
-                        🗑 SLETT
+                        🙈 SKJUL
                       </button>
                     </div>
                   </div>
