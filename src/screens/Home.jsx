@@ -18,6 +18,11 @@ export default function Home({
   loading,
   startSession,
   goToStats,
+  club,
+  onLogout,
+  push,
+  nextTraining,
+  onSaveTraining,
 }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // spiller som venter på bekreftelse
   const [editPlayer, setEditPlayer]       = useState(null);  // spiller som redigeres
