@@ -20,11 +20,11 @@ export default function DailyStatsPopup({ stats, onClose }) {
       value: `${stats.winStreak.name}`,
       sub: `${stats.winStreak.winStreak} kamper på rad`,
     },
-    stats.loseStreak && {
+    stats.loseStreak && stats.loseStreak.loseStreakLast > 0 && {
       icon: "💀",
-      label: "Lengste tapsrekke",
+      label: "Dårlig avslutning sist",
       value: `${stats.loseStreak.name}`,
-      sub: `${stats.loseStreak.loseStreak} tap på rad`,
+      sub: `Tapte de siste ${stats.loseStreak.loseStreakLast} kampene forrige trening`,
     },
     stats.mostGames && {
       icon: "👑",
@@ -73,6 +73,24 @@ export default function DailyStatsPopup({ stats, onClose }) {
       label: "Deuce-kongen",
       value: `${stats.deuceKing.name}`,
       sub: `Vinner ${stats.deuceKing.deuceWins} tette kamper`,
+    },
+    stats.revengeKing && {
+      icon: "😤",
+      label: "Revansjekongen",
+      value: `${stats.revengeKing.name}`,
+      sub: `Hevner seg ${stats.revengeKing.revenge.pct}% av gangene etter et tap (${stats.revengeKing.revenge.successes}/${stats.revengeKing.revenge.attempts})`,
+    },
+    stats.bestAttendance && {
+      icon: "📅",
+      label: "Best oppmøte",
+      value: `${stats.bestAttendance.name}`,
+      sub: `${stats.bestAttendance.attendance.attended} av ${stats.bestAttendance.attendance.total} treninger (${stats.bestAttendance.attendance.pct}%)`,
+    },
+    stats.bestDefense && {
+      icon: "🛡️",
+      label: "Beste forsvar",
+      value: `${stats.bestDefense.name}`,
+      sub: `Slipper inn bare ${stats.bestDefense.defense} poeng i snitt per kamp`,
     },
   ].filter(Boolean);
 
