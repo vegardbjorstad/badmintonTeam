@@ -223,6 +223,21 @@ export function useSession(players, club) {
     showToast("Økt gjenopprettet ✓", "success");
   }
 
+  // ── Permanent sletting av økt ───────────────────────────────────────────────
+  async function permanentDeleteSession(sessionId) {
+    // Slett tilhørende pauser og kamper først (cascade burde ta seg av det,
+    // men vi gjør det eksplisitt for sikkerhetsskyld)
+    await supabase.from("match_pauses").delete().eq("session_id", sessionId);
+    await supabase.from("matches").delete().eq("session_id", sessionId);
+    const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+    if (error) {
+      showToast("Feil: kunne ikke slette økten", "error");
+      return;
+    }
+    await loadAll();
+    showToast("Økt slettet permanent", "info");
+  }
+
   // ── Avledede verdier ──
   const sessionPauses = allPauses.filter((p) => p.session_id === session?.id);
   const sessionStats  = computeStats(sessionMatches, sessionPauses, players);
@@ -266,7 +281,7 @@ export function useSession(players, club) {
     addPlayerToOngoingSession,
     discardMatch,
     removePlayerFromSession,
-    softDeleteSession, restoreSession,
+    softDeleteSession, restoreSession, permanentDeleteSession,
     sessionStats, totalStats, sessionList,
   };
 }

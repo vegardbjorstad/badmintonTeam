@@ -246,6 +246,7 @@ export default function App() {
           setDetailSession={setDetailSession}
           setScreen={setScreen}
           restoreSession={sess.restoreSession}
+          permanentDeleteSession={sess.permanentDeleteSession}
         />
       )}
 
