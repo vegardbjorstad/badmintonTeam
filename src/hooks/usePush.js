@@ -28,8 +28,10 @@ export function usePush(club) {
   const [loading, setLoading]       = useState(false);
 
   useEffect(() => {
-    // Sjekk støtte
-    const ok = "serviceWorker" in navigator && "PushManager" in window;
+    // Sjekk støtte — kun vis i PWA-modus (installert på hjemskjerm)
+    const isPWA = window.matchMedia("(display-mode: standalone)").matches
+      || window.navigator.standalone === true;
+    const ok = isPWA && "serviceWorker" in navigator && "PushManager" in window;
     setSupported(ok);
     if (!ok) return;
 
