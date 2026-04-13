@@ -40,7 +40,7 @@ export default function StatsTable({ rows }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 34px 34px 34px 46px 38px 42px",
+          gridTemplateColumns: "1fr 34px 34px 34px 46px 42px",
           padding: "10px 14px",
           borderBottom: "2px solid #1e3a5f",
           fontSize: 11,
@@ -50,7 +50,7 @@ export default function StatsTable({ rows }) {
         }}
       >
         <div>SPILLER</div>
-        {["K", "V", "T", "P±", "Pau", "%"].map((h) => (
+        {["K", "V", "T", "P±", "%"].map((h) => (
           <div key={h} style={{ textAlign: "center" }}>
             {h}
           </div>
@@ -63,7 +63,7 @@ export default function StatsTable({ rows }) {
           key={s.id}
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 34px 34px 34px 46px 38px 42px",
+            gridTemplateColumns: "1fr 34px 34px 34px 46px 42px",
             padding: "12px 14px",
             alignItems: "center",
             borderBottom:
@@ -113,11 +113,6 @@ export default function StatsTable({ rows }) {
             {s.diff}
           </div>
           <div
-            style={{ textAlign: "center", color: "#64748b", fontSize: 13 }}
-          >
-            {s.pauses}
-          </div>
-          <div
             style={{
               textAlign: "right",
               fontFamily: "'Barlow Condensed',sans-serif",
@@ -146,7 +141,6 @@ export default function StatsTable({ rows }) {
           ["V", "Vunnet"],
           ["T", "Tapt"],
           ["P±", "Poengdiff"],
-          //["Pau", "Pauser"],
           ["%", "Vinnprosent"],
         ].map(([k, v]) => (
           <div key={k} style={{ fontSize: 11, color: "#334155" }}>
