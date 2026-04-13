@@ -340,11 +340,11 @@ export function computeFunStats(allMatches, allSessions, players) {
 
   return {
     winStreak:      byWinStreak[0],
-    loseStreak:     byLoseStreak[0],       // tapsrekke siste økt
+    //loseStreak:     byLoseStreak[0],       // tapsrekke siste økt
     mostGames:      byGames[0],
     fewestGames:    byGames[byGames.length - 1],
     bestForm:       byRecentForm[0] ?? null,
-    worstForm:      byRecentForm[byRecentForm.length - 1] ?? null,
+    //worstForm:      byRecentForm[byRecentForm.length - 1] ?? null,
     mostUnpred:     byUnpred[0],
     deuceKing:      byDeuce[0],
     revengeKing:    byRevenge[0] ?? null,

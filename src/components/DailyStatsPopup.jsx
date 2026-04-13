@@ -20,12 +20,12 @@ export default function DailyStatsPopup({ stats, onClose }) {
       value: `${stats.winStreak.name}`,
       sub: `${stats.winStreak.winStreak} kamper på rad`,
     },
-    stats.loseStreak && stats.loseStreak.loseStreakLast > 0 && {
+   /* stats.loseStreak && stats.loseStreak.loseStreakLast > 0 && {
       icon: "💀",
       label: "Dårlig avslutning sist",
       value: `${stats.loseStreak.name}`,
       sub: `Tapte de siste ${stats.loseStreak.loseStreakLast} kampene forrige trening`,
-    },
+    },*/
     stats.mostGames && {
       icon: "👑",
       label: "Flest kamper totalt",
@@ -44,12 +44,12 @@ export default function DailyStatsPopup({ stats, onClose }) {
       value: `${stats.bestForm.name}`,
       sub: `${stats.bestForm.recentForm}% vinnprosent`,
     },
-    stats.worstForm && stats.worstForm.id !== stats.bestForm?.id && {
+    /*stats.worstForm && stats.worstForm.id !== stats.bestForm?.id && {
       icon: "📉",
       label: "Dårligst form siste 30 dager",
       value: `${stats.worstForm.name}`,
       sub: `${stats.worstForm.recentForm}% vinnprosent`,
-    },
+    },*/
     stats.bestCombo && {
       icon: "🤝",
       label: "Beste partnerkombo",
