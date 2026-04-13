@@ -143,22 +143,20 @@ function attendanceScore(matches, playerId, allSessions) {
 }
 
 // ── Beste forsvar ─────────────────────────────────────────────────────────────
-// Andel poeng sluppet inn av totale poeng i kampen (lavest % = best forsvar)
-// Bruker % slik at det er rettferdig uavhengig av om man spiller til 11 eller 21
+// Ratio: poeng sluppet inn per poeng scoret (lavest = best forsvar)
+// Rettferdig uavhengig av om man spiller til 11 eller 21
 
 function defenseScore(matches, playerId) {
   const pm = matchesForPlayer(matches, playerId);
   if (pm.length === 0) return null;
-  let totalAgainst = 0, totalAll = 0;
+  let totalAgainst = 0, totalScored = 0;
   for (const m of pm) {
     const onTeam1 = m.team1_p1 === playerId || m.team1_p2 === playerId;
-    const against = onTeam1 ? m.score_team2 : m.score_team1;
-    const scored  = onTeam1 ? m.score_team1 : m.score_team2;
-    totalAgainst += against;
-    totalAll     += against + scored;
+    totalAgainst += onTeam1 ? m.score_team2 : m.score_team1;
+    totalScored  += onTeam1 ? m.score_team1 : m.score_team2;
   }
-  if (totalAll === 0) return null;
-  return Math.round((totalAgainst / totalAll) * 100); // % av poeng mot deg
+  if (totalScored === 0) return null;
+  return Math.round((totalAgainst / totalScored) * 100) / 100; // to desimaler
 }
 
 // ── Partnere ─────────────────────────────────────────────────────────────────
