@@ -90,7 +90,7 @@ export default function DailyStatsPopup({ stats, onClose }) {
       icon: "🛡️",
       label: "Beste forsvar",
       value: `${stats.bestDefense.name}`,
-      sub: `Slipper inn bare ${stats.bestDefense.defense} poeng i snitt per kamp`,
+      sub: `Bare ${stats.bestDefense.defense}% av poengene går imot laget`,
     },
   ].filter(Boolean);
 
