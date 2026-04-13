@@ -92,6 +92,24 @@ export default function DailyStatsPopup({ stats, onClose }) {
       value: `${stats.bestDefense.name}`,
       sub: `Slipper inn ${stats.bestDefense.defense} poeng for hvert poeng scoret`,
     },
+    stats.biggestProgress && stats.biggestProgress.progress.diff > 0 && {
+      icon: "📈",
+      label: "Størst fremgang",
+      value: `${stats.biggestProgress.name}`,
+      sub: `Gikk fra ${stats.biggestProgress.progress.prev}% til ${stats.biggestProgress.progress.last}% vinnprosent siste trening (+${stats.biggestProgress.progress.diff}%)`,
+    },
+    stats.biggestUpset && {
+      icon: "😱",
+      label: "Overraskelsen",
+      value: stats.biggestUpset.names,
+      sub: `Slo et lag med ${stats.biggestUpset.loserPct}% vinnprosent til tross for bare ${stats.biggestUpset.winnerPct}% selv!`,
+    },
+    stats.drJekyll && stats.drJekyll.drJekyll.diff >= 30 && {
+      icon: "🎭",
+      label: "Dr. Jekyll",
+      value: `${stats.drJekyll.name}`,
+      sub: `Beste økt: ${stats.drJekyll.drJekyll.best}% — verste økt: ${stats.drJekyll.drJekyll.worst}%. Hvem er du egentlig?`,
+    },
   ].filter(Boolean);
 
   return (

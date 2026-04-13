@@ -143,20 +143,16 @@ function attendanceScore(matches, playerId, allSessions) {
 }
 
 // ── Beste forsvar ─────────────────────────────────────────────────────────────
-// Ratio: poeng sluppet inn per poeng scoret (lavest = best forsvar)
-// Rettferdig uavhengig av om man spiller til 11 eller 21
+// Gjennomsnittlig antall poeng sluppet inn per kamp
 
 function defenseScore(matches, playerId) {
   const pm = matchesForPlayer(matches, playerId);
   if (pm.length === 0) return null;
-  let totalAgainst = 0, totalScored = 0;
-  for (const m of pm) {
+  const totalAgainst = pm.reduce((sum, m) => {
     const onTeam1 = m.team1_p1 === playerId || m.team1_p2 === playerId;
-    totalAgainst += onTeam1 ? m.score_team2 : m.score_team1;
-    totalScored  += onTeam1 ? m.score_team1 : m.score_team2;
-  }
-  if (totalScored === 0) return null;
-  return Math.round((totalAgainst / totalScored) * 100) / 100; // to desimaler
+    return sum + (onTeam1 ? m.score_team2 : m.score_team1);
+  }, 0);
+  return Math.round((totalAgainst / pm.length) * 10) / 10; // én desimal
 }
 
 // ── Partnere ─────────────────────────────────────────────────────────────────
@@ -284,6 +280,100 @@ function favoritePartner(matches, players, playerId) {
   };
 }
 
+// ── Størst fremgang ──────────────────────────────────────────────────────────
+// Sammenligner vinnprosent siste økt vs. nest siste økt spilleren deltok i
+
+function progressScore(matches, playerId, allSessions) {
+  const pm = matchesForPlayer(matches, playerId);
+  if (pm.length === 0) return null;
+
+  const sessionDates = Object.fromEntries(allSessions.map((s) => [s.id, s.date]));
+  const sessionIds = [...new Set(pm.map((m) => m.session_id))];
+  sessionIds.sort((a, b) => (sessionDates[b] || "").localeCompare(sessionDates[a] || ""));
+
+  if (sessionIds.length < 2) return null; // trenger minst to økter
+
+  const pctForSession = (sid) => {
+    const sm = pm.filter((m) => m.session_id === sid);
+    if (sm.length === 0) return null;
+    const wins = sm.filter((m) => didWin(m, playerId)).length;
+    return Math.round((wins / sm.length) * 100);
+  };
+
+  const last = pctForSession(sessionIds[0]);
+  const prev = pctForSession(sessionIds[1]);
+  if (last === null || prev === null) return null;
+
+  return { last, prev, diff: last - prev };
+}
+
+// ── Overraskelsen ─────────────────────────────────────────────────────────────
+// Spiller med lavest vinnprosent totalt som vant mot den med høyest vinnprosent
+
+function biggestUpset(matches, players) {
+  // Beregn vinnprosent per spiller
+  const stats = {};
+  for (const m of matches) {
+    const all = [m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2];
+    const winners = m.winner === 1 ? [m.team1_p1, m.team1_p2] : [m.team2_p1, m.team2_p2];
+    all.forEach((id) => {
+      if (!stats[id]) stats[id] = { wins: 0, games: 0 };
+      stats[id].games++;
+      if (winners.includes(id)) stats[id].wins++;
+    });
+  }
+
+  const pct = (id) => stats[id] && stats[id].games > 0
+    ? stats[id].wins / stats[id].games : 0;
+
+  // Finn kamper der det lavest rangerte laget vant mot det høyest rangerte
+  let bestUpset = null;
+  for (const m of matches) {
+    const t1avg = (pct(m.team1_p1) + pct(m.team1_p2)) / 2;
+    const t2avg = (pct(m.team2_p1) + pct(m.team2_p2)) / 2;
+    const winnerAvg = m.winner === 1 ? t1avg : t2avg;
+    const loserAvg  = m.winner === 1 ? t2avg : t1avg;
+    const upset = loserAvg - winnerAvg; // positivt = underdog vant
+    if (upset > 0 && (!bestUpset || upset > bestUpset.upset)) {
+      const winners = m.winner === 1
+        ? [m.team1_p1, m.team1_p2]
+        : [m.team2_p1, m.team2_p2];
+      bestUpset = {
+        upset,
+        names: winners.map((id) => playerName(players, id)).join(" & "),
+        winnerPct: Math.round(winnerAvg * 100),
+        loserPct:  Math.round(loserAvg * 100),
+      };
+    }
+  }
+  return bestUpset;
+}
+
+// ── Dr. Jekyll ────────────────────────────────────────────────────────────────
+// Størst forskjell mellom beste og dårligste økt (vinnprosent)
+
+function drJekyllScore(matches, playerId, allSessions) {
+  const pm = matchesForPlayer(matches, playerId);
+  if (pm.length === 0) return null;
+
+  const sessionDates = Object.fromEntries(allSessions.map((s) => [s.id, s.date]));
+  const sessionIds = [...new Set(pm.map((m) => m.session_id))];
+  if (sessionIds.length < 2) return null;
+
+  const pcts = sessionIds.map((sid) => {
+    const sm = pm.filter((m) => m.session_id === sid);
+    if (sm.length < 2) return null; // minst 2 kamper for å telle
+    const wins = sm.filter((m) => didWin(m, playerId)).length;
+    return Math.round((wins / sm.length) * 100);
+  }).filter((p) => p !== null);
+
+  if (pcts.length < 2) return null;
+
+  const best  = Math.max(...pcts);
+  const worst = Math.min(...pcts);
+  return { best, worst, diff: best - worst };
+}
+
 // ── Hovedfunksjon ─────────────────────────────────────────────────────────────
 
 export function computeFunStats(allMatches, allSessions, players) {
@@ -312,6 +402,8 @@ export function computeFunStats(allMatches, allSessions, players) {
       wins: pm.filter((m) => didWin(m, p.id)).length,
       winStreak: longestStreak(matches, p.id, true, activeSessions),
       loseStreakLast,
+      progress: progressScore(matches, p.id, activeSessions),
+      drJekyll: drJekyllScore(matches, p.id, activeSessions),
       unpredictability: unpredictabilityScore(matches, activeSessions, p.id),
       deuceWins: deuceWins(matches, p.id),
       recentForm: form,
@@ -339,7 +431,13 @@ export function computeFunStats(allMatches, allSessions, players) {
   const byDefense      = perPlayer
                            .filter((p) => p.defense !== null)
                            .sort((a, b) => a.defense - b.defense); // lavest = best
-
+  const byProgress     = perPlayer
+                           .filter((p) => p.progress !== null)
+                           .sort((a, b) => b.progress.diff - a.progress.diff);
+  const byDrJekyll     = perPlayer
+                           .filter((p) => p.drJekyll !== null)
+                           .sort((a, b) => b.drJekyll.diff - a.drJekyll.diff);
+  const upset          = biggestUpset(matches, players);
   const combos = bestPartnerCombo(matches, players);
 
   return {
@@ -354,6 +452,9 @@ export function computeFunStats(allMatches, allSessions, players) {
     revengeKing:    byRevenge[0] ?? null,
     bestAttendance: byAttendance[0] ?? null,
     bestDefense:    byDefense[0] ?? null,
+    biggestUpset:   upset ?? null,
+    biggestProgress: byProgress[0] ?? null,
+    drJekyll:       byDrJekyll[0] ?? null,
     bestCombo:      combos?.best ?? null,
     worstCombo:     combos?.worst ?? null,
     perPlayer,
