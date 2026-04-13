@@ -146,7 +146,7 @@ export default function StatsTable({ rows }) {
           ["V", "Vunnet"],
           ["T", "Tapt"],
           ["P±", "Poengdiff"],
-          ["Pau", "Pauser"],
+          //["Pau", "Pauser"],
           ["%", "Vinnprosent"],
         ].map(([k, v]) => (
           <div key={k} style={{ fontSize: 11, color: "#334155" }}>
