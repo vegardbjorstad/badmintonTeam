@@ -205,7 +205,7 @@ function unpredictabilityScore(matches, allSessions, playerId) {
 function isDeuceMatch(m) {
   const diff = Math.abs(m.score_team1 - m.score_team2);
   const total = m.score_team1 + m.score_team2;
-  return diff <= 2 && total >= 28;
+  return diff <= 2 && total >= 42;
 }
 
 function deuceWins(matches, playerId) {
