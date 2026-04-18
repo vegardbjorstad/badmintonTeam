@@ -10,107 +10,106 @@
  *   stats   — objekt fra computeFunStats()
  *   onClose — funksjon for å lukke popup
  */
+
+// Mapping fra stat-nøkkel → visningsinfo
+const STAT_CONFIG = {
+  winStreak: (d) => ({
+    icon: "🔥",
+    label: "Lengste seiersrekke",
+    value: d.name,
+    sub: `${d.winStreak} kamper på rad`,
+  }),
+  winStreakLast: (d) => ({
+    icon: "⚡",
+    label: "Best siste økt",
+    value: d.name,
+    sub: `${d.winStreakLast} seire på rad forrige trening`,
+  }),
+  mostGames: (d) => ({
+    icon: "👑",
+    label: "Flest kamper totalt",
+    value: d.name,
+    sub: `${d.games} kamper spilt`,
+  }),
+  bestForm: (d) => ({
+    icon: "📈",
+    label: "Best form siste 30 dager",
+    value: d.name,
+    sub: `${d.recentForm}% vinnprosent`,
+  }),
+  bestCombo: (d) => ({
+    icon: "🤝",
+    label: "Beste partnerkombo",
+    value: d.names,
+    sub: `${d.pct}% vinnprosent over ${d.games} kamper`,
+  }),
+  worstCombo: (d) => ({
+    icon: "💔",
+    label: "Verste partnerkombo",
+    value: d.names,
+    sub: `${d.pct}% vinnprosent over ${d.games} kamper`,
+  }),
+  mostUnpred: (d) => ({
+    icon: "🎲",
+    label: "Mest uforutsigbar spiller",
+    value: d.name,
+    sub: "Ingen vet hva som skjer neste kamp",
+  }),
+  deuceKing: (d) => ({
+    icon: "⚡",
+    label: "Deuce-kongen",
+    value: d.name,
+    sub: `Vinner ${d.deuceWins} tette kamper`,
+  }),
+  revengeKing: (d) => ({
+    icon: "😤",
+    label: "Revansjekongen",
+    value: d.name,
+    sub: `Hevner seg ${d.revenge.pct}% av gangene etter et tap (${d.revenge.successes}/${d.revenge.attempts})`,
+  }),
+  bestAttendance: (d) => ({
+    icon: "📅",
+    label: "Best oppmøte",
+    value: d.name,
+    sub: `${d.attendance.attended} av ${d.attendance.total} treninger (${d.attendance.pct}%)`,
+  }),
+  bestDefense: (d) => ({
+    icon: "🛡️",
+    label: "Beste forsvar",
+    value: d.name,
+    sub: `Slipper inn ${d.defense} poeng for hvert poeng scoret`,
+  }),
+  biggestProgress: (d) => ({
+    icon: "🚀",
+    label: "Størst fremgang",
+    value: d.name,
+    sub: `Gikk fra ${d.progress.prev}% til ${d.progress.last}% vinnprosent siste trening (+${d.progress.diff}%)`,
+  }),
+  biggestUpset: (d) => ({
+    icon: "😱",
+    label: "Overraskelsen",
+    value: d.names,
+    sub: `Slo et lag med ${d.loserPct}% vinnprosent til tross for bare ${d.winnerPct}% selv!`,
+  }),
+  drJekyll: (d) => ({
+    icon: "🎭",
+    label: "Dr. Jekyll",
+    value: d.name,
+    sub: `Beste økt: ${d.drJekyll.best}% — verste økt: ${d.drJekyll.worst}%. Hvem er du egentlig?`,
+  }),
+};
+
 export default function DailyStatsPopup({ stats, onClose }) {
   if (!stats) return null;
 
-  const rows = [
-    stats.winStreak && {
-      icon: "🔥",
-      label: "Lengste seiersrekke",
-      value: `${stats.winStreak.name}`,
-      sub: `${stats.winStreak.winStreak} kamper på rad`,
-    },
-   /* stats.loseStreak && stats.loseStreak.loseStreakLast > 0 && {
-      icon: "💀",
-      label: "Dårlig avslutning sist",
-      value: `${stats.loseStreak.name}`,
-      sub: `Tapte de siste ${stats.loseStreak.loseStreakLast} kampene forrige trening`,
-    },*/
-    stats.mostGames && {
-      icon: "👑",
-      label: "Flest kamper totalt",
-      value: `${stats.mostGames.name}`,
-      sub: `${stats.mostGames.games} kamper spilt`,
-    },
-    stats.fewestGames && stats.fewestGames.id !== stats.mostGames?.id && {
-      icon: "🛋️",
-      label: "Færrest kamper",
-      value: `${stats.fewestGames.name}`,
-      sub: `Bare ${stats.fewestGames.games} kamper — ta deg sammen!`,
-    },
-    stats.bestForm && {
-      icon: "📈",
-      label: "Best form siste 30 dager",
-      value: `${stats.bestForm.name}`,
-      sub: `${stats.bestForm.recentForm}% vinnprosent`,
-    },
-    /*stats.worstForm && stats.worstForm.id !== stats.bestForm?.id && {
-      icon: "📉",
-      label: "Dårligst form siste 30 dager",
-      value: `${stats.worstForm.name}`,
-      sub: `${stats.worstForm.recentForm}% vinnprosent`,
-    },*/
-    stats.bestCombo && {
-      icon: "🤝",
-      label: "Beste partnerkombo",
-      value: stats.bestCombo.names,
-      sub: `${stats.bestCombo.pct}% vinnprosent over ${stats.bestCombo.games} kamper`,
-    },
-    stats.worstCombo && {
-      icon: "💔",
-      label: "Verste partnerkombo",
-      value: stats.worstCombo.names,
-      sub: `${stats.worstCombo.pct}% vinnprosent over ${stats.worstCombo.games} kamper`,
-    },
-    stats.mostUnpred && {
-      icon: "🎲",
-      label: "Mest uforutsigbar spiller",
-      value: `${stats.mostUnpred.name}`,
-      sub: "Ingen vet hva som skjer neste kamp",
-    },
-    stats.deuceKing && stats.deuceKing.deuceWins > 0 && {
-      icon: "⚡",
-      label: "Deuce-kongen",
-      value: `${stats.deuceKing.name}`,
-      sub: `Vinner ${stats.deuceKing.deuceWins} tette kamper`,
-    },
-    stats.revengeKing && {
-      icon: "😤",
-      label: "Revansjekongen",
-      value: `${stats.revengeKing.name}`,
-      sub: `Hevner seg ${stats.revengeKing.revenge.pct}% av gangene etter et tap (${stats.revengeKing.revenge.successes}/${stats.revengeKing.revenge.attempts})`,
-    },
-    stats.bestAttendance && {
-      icon: "📅",
-      label: "Best oppmøte",
-      value: `${stats.bestAttendance.name}`,
-      sub: `${stats.bestAttendance.attendance.attended} av ${stats.bestAttendance.attendance.total} treninger (${stats.bestAttendance.attendance.pct}%)`,
-    },
-    stats.bestDefense && {
-      icon: "🛡️",
-      label: "Beste forsvar",
-      value: `${stats.bestDefense.name}`,
-      sub: `Slipper inn ${stats.bestDefense.defense} poeng for hvert poeng scoret`,
-    },
-    stats.biggestProgress && stats.biggestProgress.progress.diff > 0 && {
-      icon: "📈",
-      label: "Størst fremgang",
-      value: `${stats.biggestProgress.name}`,
-      sub: `Gikk fra ${stats.biggestProgress.progress.prev}% til ${stats.biggestProgress.progress.last}% vinnprosent siste trening (+${stats.biggestProgress.progress.diff}%)`,
-    },
-    stats.biggestUpset && {
-      icon: "😱",
-      label: "Overraskelsen",
-      value: stats.biggestUpset.names,
-      sub: `Slo et lag med ${stats.biggestUpset.loserPct}% vinnprosent til tross for bare ${stats.biggestUpset.winnerPct}% selv!`,
-    },
-    stats.drJekyll && stats.drJekyll.drJekyll.diff >= 30 && {
-      icon: "🎭",
-      label: "Dr. Jekyll",
-      value: `${stats.drJekyll.name}`,
-      sub: `Beste økt: ${stats.drJekyll.drJekyll.best}% — verste økt: ${stats.drJekyll.drJekyll.worst}%. Hvem er du egentlig?`,
-    },
-  ].filter(Boolean);
+  const rows = Object.entries(stats.stats ?? {})
+    .map(([key, data]) => {
+      const builder = STAT_CONFIG[key];
+      return builder ? builder(data) : null;
+    })
+    .filter(Boolean);
+
+  if (rows.length === 0) return null;
 
   return (
     <div

@@ -62,10 +62,10 @@ function longestStreak(matches, playerId, win, allSessions) {
   return best;
 }
 
-// ── Tapsrekke siste økt ───────────────────────────────────────────────────────
-// Returnerer antall tap på rad i siste økt spilleren deltok i
+// ── Vinnrekke siste økt ───────────────────────────────────────────────────────
+// Returnerer lengste vinnrekke i siste økt spilleren deltok i
 
-function loseStreakLastSession(matches, playerId, allSessions) {
+function winStreakLastSession(matches, playerId, allSessions) {
   const pm = matchesForPlayer(matches, playerId);
   if (pm.length === 0) return 0;
 
@@ -85,13 +85,13 @@ function loseStreakLastSession(matches, playerId, allSessions) {
     .filter((m) => m.session_id === lastSessionId)
     .sort((a, b) => a.match_number - b.match_number);
 
-  // Tell tapsrekke på slutten av økten
-  let streak = 0;
-  for (let i = sessionMatches.length - 1; i >= 0; i--) {
-    if (!didWin(sessionMatches[i], playerId)) streak++;
-    else break;
+  // Tell lengste vinnrekke i økten
+  let best = 0, current = 0;
+  for (const m of sessionMatches) {
+    if (didWin(m, playerId)) { current++; best = Math.max(best, current); }
+    else current = 0;
   }
-  return streak;
+  return best;
 }
 
 // ── Revansjekongen ────────────────────────────────────────────────────────────
@@ -400,7 +400,7 @@ export function computeFunStats(allMatches, allSessions, players) {
     const revenge = revengeScore(matches, p.id, activeSessions);
     const attendance = attendanceScore(matches, p.id, activeSessions);
     const defense = defenseScore(matches, p.id);
-    const loseStreakLast = loseStreakLastSession(matches, p.id, activeSessions);
+    const winStreakLast = winStreakLastSession(matches, p.id, activeSessions);
 
     return {
       id: p.id,
@@ -408,7 +408,7 @@ export function computeFunStats(allMatches, allSessions, players) {
       games: pm.length,
       wins: pm.filter((m) => didWin(m, p.id)).length,
       winStreak: longestStreak(matches, p.id, true, activeSessions),
-      loseStreakLast,
+      winStreakLast,
       progress: progressScore(matches, p.id, activeSessions),
       drJekyll: drJekyllScore(matches, p.id, activeSessions),
       unpredictability: unpredictabilityScore(matches, activeSessions, p.id),
@@ -423,9 +423,8 @@ export function computeFunStats(allMatches, allSessions, players) {
 
   if (perPlayer.length === 0) return null;
 
-  // Sorteringer
   const byWinStreak    = [...perPlayer].sort((a, b) => b.winStreak - a.winStreak);
-  const byLoseStreak   = [...perPlayer].sort((a, b) => b.loseStreakLast - a.loseStreakLast);
+  const byWinStreakLast= [...perPlayer].sort((a, b) => b.winStreakLast - a.winStreakLast);
   const byGames        = [...perPlayer].sort((a, b) => b.games - a.games);
   const byRecentForm   = perPlayer.filter((p) => p.recentForm !== null)
                            .sort((a, b) => b.recentForm - a.recentForm);
@@ -437,7 +436,7 @@ export function computeFunStats(allMatches, allSessions, players) {
   const byAttendance   = [...perPlayer].sort((a, b) => b.attendance.pct - a.attendance.pct);
   const byDefense      = perPlayer
                            .filter((p) => p.defense !== null)
-                           .sort((a, b) => a.defense - b.defense); // lavest = best
+                           .sort((a, b) => a.defense - b.defense);
   const byProgress     = perPlayer
                            .filter((p) => p.progress !== null)
                            .sort((a, b) => b.progress.diff - a.progress.diff);
@@ -445,25 +444,32 @@ export function computeFunStats(allMatches, allSessions, players) {
                            .filter((p) => p.drJekyll !== null)
                            .sort((a, b) => b.drJekyll.diff - a.drJekyll.diff);
   const upset          = biggestUpset(matches, players);
-  const combos = bestPartnerCombo(matches, players);
+  const combos         = bestPartnerCombo(matches, players);
+
+  // Alle kandidater — filtrer ut null-verdier
+  const allStats = [
+    byWinStreak[0]                            && { key: "winStreak",       data: byWinStreak[0] },
+    byWinStreakLast[0]?.winStreakLast > 0      && { key: "winStreakLast",   data: byWinStreakLast[0] },
+    byGames[0]                                && { key: "mostGames",       data: byGames[0] },
+    byRecentForm[0]                           && { key: "bestForm",        data: byRecentForm[0] },
+    byUnpred[0]                               && { key: "mostUnpred",      data: byUnpred[0] },
+    byDeuce[0]?.deuceWins > 0                 && { key: "deuceKing",       data: byDeuce[0] },
+    byRevenge[0]                              && { key: "revengeKing",     data: byRevenge[0] },
+    byAttendance[0]                           && { key: "bestAttendance",  data: byAttendance[0] },
+    byDefense[0]                              && { key: "bestDefense",     data: byDefense[0] },
+    upset                                     && { key: "biggestUpset",    data: upset },
+    byProgress[0]                             && { key: "biggestProgress", data: byProgress[0] },
+    byDrJekyll[0]                             && { key: "drJekyll",        data: byDrJekyll[0] },
+    combos?.best                              && { key: "bestCombo",       data: combos.best },
+    combos?.worst                             && { key: "worstCombo",      data: combos.worst },
+  ].filter(Boolean);
+
+  // Plukk 5 tilfeldige
+  const shuffled = allStats.sort(() => Math.random() - 0.5);
+  const picked = shuffled.slice(0, 5);
 
   return {
-    winStreak:      byWinStreak[0],
-    //loseStreak:     byLoseStreak[0],       // tapsrekke siste økt
-    mostGames:      byGames[0],
-    fewestGames:    byGames[byGames.length - 1],
-    bestForm:       byRecentForm[0] ?? null,
-    //worstForm:      byRecentForm[byRecentForm.length - 1] ?? null,
-    mostUnpred:     byUnpred[0],
-    deuceKing:      byDeuce[0],
-    revengeKing:    byRevenge[0] ?? null,
-    bestAttendance: byAttendance[0] ?? null,
-    bestDefense:    byDefense[0] ?? null,
-    biggestUpset:   upset ?? null,
-    biggestProgress: byProgress[0] ?? null,
-    drJekyll:       byDrJekyll[0] ?? null,
-    bestCombo:      combos?.best ?? null,
-    worstCombo:     combos?.worst ?? null,
+    stats: Object.fromEntries(picked.map((s) => [s.key, s.data])),
     perPlayer,
   };
 }
