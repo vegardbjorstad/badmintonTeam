@@ -146,14 +146,20 @@ export function useSession(players, club) {
     setScore({ t1: 0, t2: 0 });
   }
 
-  // ── Forkast kamp (0-0) og generer ny ──
-  function discardMatch(activePlayers) {
-    showToast("Kamp forkastet — ny kamp generert", "info");
-    const next = generateNextMatch(activePlayers, matchHistory, waitingQueue);
-    setCurrentMatch(next);
-    setWaitingQueue(next?.sitting || []);
-    setScore({ t1: 0, t2: 0 });
-  }
+ function discardMatch(activePlayers) {
+  showToast("Kamp forkastet — ny kamp generert", "info");
+  
+  // Legg til den forkastede kampen midlertidig i historikken
+  // slik at algoritmen velger en annen kombinasjon
+  const tempHistory = currentMatch
+    ? [...matchHistory, { team1: currentMatch.team1, team2: currentMatch.team2 }]
+    : matchHistory;
+
+  const next = generateNextMatch(activePlayers, tempHistory, waitingQueue);
+  setCurrentMatch(next);
+  setWaitingQueue(next?.sitting || []);
+  setScore({ t1: 0, t2: 0 });
+}
 
   function addPlayerToOngoingSession(playerId, playerName, activePlayers) {
     setCheckedIn((prev) => [...prev, playerId]);
