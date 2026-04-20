@@ -32,7 +32,7 @@ Deno.serve(async () => {
 
   let sent = 0;
   for (const club of clubs) {
-    const trainingTime = new Date(club.next_training);
+    const trainingTime = new Date(new Date(club.next_training).getTime() + 2 * 60 * 60 * 1000); // Juster til treningstid for varslet
     const timeStr = trainingTime.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
 
     // Hent alle push-abonnementer for denne klubben

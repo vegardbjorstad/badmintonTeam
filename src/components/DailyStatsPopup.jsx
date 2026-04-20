@@ -33,7 +33,7 @@ const STAT_CONFIG = {
   }),
   bestForm: (d) => ({
     icon: "📈",
-    label: "Best form siste 30 dager",
+    label: "Best form siste 14 dager",
     value: d.name,
     sub: `${d.recentForm}% vinnprosent`,
   }),

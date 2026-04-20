@@ -203,20 +203,19 @@ function unpredictabilityScore(matches, allSessions, playerId) {
 // ── Deuce ────────────────────────────────────────────────────────────────────
 
 function isDeuceMatch(m) {
-  const diff = Math.abs(m.score_team1 - m.score_team2);
-  const total = m.score_team1 + m.score_team2;
-  return diff <= 2 && total >= 42;
+  const maxScore = Math.max(m.score_team1, m.score_team2);
+  return maxScore !== 11 && maxScore !== 21;
 }
 
 function deuceWins(matches, playerId) {
   return matches.filter((m) => isDeuceMatch(m) && didWin(m, playerId)).length;
 }
 
-// ── Form siste 30 dager ───────────────────────────────────────────────────────
+// ── Form siste 14 dager ───────────────────────────────────────────────────────
 
 function recentForm(matches, allSessions, playerId) {
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
+  cutoff.setDate(cutoff.getDate() - 16);
   const recentSessionIds = new Set(
     allSessions
       .filter((s) => new Date(s.date) >= cutoff)
