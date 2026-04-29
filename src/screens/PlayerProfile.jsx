@@ -89,15 +89,18 @@ function computePlayerStats(allMatches, allSessions, playerId) {
   const smTotal = {};
   matches.forEach(m => {
     if (!m.session_id) return;
-    if (!smTotal[m.session_id]) smTotal[m.session_id] = { wins: 0, games: 0, date: null };
+    if (!smTotal[m.session_id]) smTotal[m.session_id] = { wins: 0, games: 0, pFor: 0, pAgainst: 0, date: null };
+    const onTeam1 = m.team1_p1 === playerId || m.team1_p2 === playerId;
     smTotal[m.session_id].games++;
+    smTotal[m.session_id].pFor     += onTeam1 ? m.score_team1 : m.score_team2;
+    smTotal[m.session_id].pAgainst += onTeam1 ? m.score_team2 : m.score_team1;
     if (didWin(m, playerId)) smTotal[m.session_id].wins++;
   });
   (allSessions || []).forEach(s => { if (smTotal[s.id]) smTotal[s.id].date = s.date; });
   const trend = Object.entries(smTotal)
     .filter(([, v]) => v.date && v.games > 0)
     .sort((a, b) => new Date(a[1].date) - new Date(b[1].date))
-    .map(([id, v]) => ({ sessionId: id, date: v.date, pct: Math.round((v.wins / v.games) * 100), wins: v.wins, games: v.games }));
+    .map(([id, v]) => ({ sessionId: id, date: v.date, pct: Math.round((v.wins / v.games) * 100), diff: v.pFor - v.pAgainst, wins: v.wins, games: v.games }));
 
   const last10 = matches.slice(-10).map(m => didWin(m, playerId) ? 1 : 0);
 
@@ -276,6 +279,74 @@ function PartnerTab({ partnerRows, partnerTrendSorted }) {
   );
 }
 
+// ── Utvikling-tab ─────────────────────────────────────────────────────────────
+
+function TrendTab({ trend }) {
+  const [metric, setMetric] = useState("pct");
+
+  return (
+    <div>
+      {/* Metrikk-velger */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {[["pct", "Vinner %"], ["diff", "Poengdiff"]].map(([key, label]) => (
+          <button key={key} onClick={() => setMetric(key)} style={{
+            flex: 1, height: 36, borderRadius: 10,
+            border: metric === key ? "none" : "1px solid #1e3a5f",
+            background: metric === key ? "linear-gradient(135deg,#38bdf8,#6366f1)" : "#0f172a",
+            color: metric === key ? "#fff" : "#64748b",
+            fontFamily: "'Barlow Condensed',sans-serif",
+            fontWeight: 700, fontSize: 13, letterSpacing: "0.06em", cursor: "pointer",
+          }}>
+            {label.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ background: "#0f172a", border: "1px solid #1e3a5f", borderRadius: 12, padding: "16px 12px", marginBottom: 12 }}>
+        <LineGraph trend={trend} metric={metric} />
+      </div>
+      {metric === "pct" && (
+        <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginBottom: 16 }}>
+          Stiplet linje = snitt ({trend.length > 0 ? Math.round(trend.reduce((s, t) => s + t.pct, 0) / trend.length) : 0}%)
+        </div>
+      )}
+
+      <Label>PER ØKT</Label>
+      <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "#1e3a5f", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 48px 48px 72px", gap: 8, padding: "10px 14px", background: "#0a1628" }}>
+          {["Dato", "K", "S", metric === "pct" ? "%" : "+/-"].map(h => (
+            <div key={h} style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.08em", textAlign: h === "Dato" ? "left" : "right" }}>{h}</div>
+          ))}
+        </div>
+        {[...trend].reverse().map((t, i) => (
+          <div key={t.sessionId} style={{
+            display: "grid", gridTemplateColumns: "1fr 48px 48px 72px",
+            gap: 8, padding: "12px 14px",
+            background: i % 2 === 0 ? "#0f172a" : "#0a1628", alignItems: "center",
+          }}>
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>
+              {new Date(t.date).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })}
+            </div>
+            <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{t.games}</div>
+            <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{t.wins}</div>
+            <div style={{ textAlign: "right" }}>
+              {metric === "pct" ? (
+                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15, color: t.pct >= 50 ? "#16a34a" : "#ef4444" }}>
+                  {t.pct}%
+                </span>
+              ) : (
+                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15, color: t.diff >= 0 ? "#16a34a" : "#ef4444" }}>
+                  {t.diff > 0 ? `+${t.diff}` : t.diff}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Hoved-komponent ───────────────────────────────────────────────────────────
 
 export default function PlayerProfile({ player, players, allMatches, allSessions, onBack }) {
@@ -368,40 +439,7 @@ export default function PlayerProfile({ player, players, allMatches, allSessions
 
       {/* UTVIKLING */}
       {tab === "trend" && (
-        <div>
-          <div style={{ background: "#0f172a", border: "1px solid #1e3a5f", borderRadius: 12, padding: "16px 12px", marginBottom: 12 }}>
-            <LineGraph trend={stats.trend} metric="pct" />
-          </div>
-          <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginBottom: 16 }}>
-            Stiplet linje = snitt ({stats.trend.length > 0 ? Math.round(stats.trend.reduce((s, t) => s + t.pct, 0) / stats.trend.length) : 0}%)
-          </div>
-          <Label>PER ØKT</Label>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "#1e3a5f", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 48px 48px 56px", gap: 8, padding: "10px 14px", background: "#0a1628" }}>
-              {["Dato", "K", "S", "%"].map(h => (
-                <div key={h} style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.08em", textAlign: h === "Dato" ? "left" : "right" }}>{h}</div>
-              ))}
-            </div>
-            {[...stats.trend].reverse().map((t, i) => (
-              <div key={t.sessionId} style={{
-                display: "grid", gridTemplateColumns: "1fr 48px 48px 56px",
-                gap: 8, padding: "12px 14px",
-                background: i % 2 === 0 ? "#0f172a" : "#0a1628", alignItems: "center",
-              }}>
-                <div style={{ fontSize: 13, color: "#94a3b8" }}>
-                  {new Date(t.date).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })}
-                </div>
-                <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{t.games}</div>
-                <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{t.wins}</div>
-                <div style={{ textAlign: "right" }}>
-                  <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15, color: t.pct >= 50 ? "#16a34a" : "#ef4444" }}>
-                    {t.pct}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TrendTab trend={stats.trend} />
       )}
     </div>
   );
