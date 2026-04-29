@@ -1,0 +1,22 @@
+{
+  "activity_id": 22634672922,
+  "name": "Badminton",
+  "sport": "badminton",
+  "start": "2026-04-23 19:35:37",
+  "duration_s": 5345,
+  "calories": 786,
+  "heart_rate": {
+    "avg_bpm": 126,
+    "max_bpm": 183,
+    "zone_summary": {},
+    "samples": []
+  },
+  "training_effect": {
+    "aerobic": null,
+    "anaerobic": null,
+    "aerobic_label": null,
+    "anaerobic_label": null
+  },
+  "training_load": null,
+  "exported_at": "2026-04-29T12:22:01.200749"
+}

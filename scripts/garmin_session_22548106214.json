@@ -1,0 +1,19 @@
+{
+  "activity_id": 22548106214,
+  "name": "Badminton",
+  "sport": "badminton",
+  "start": "2026-04-16 15:26:54",
+  "duration_s": 5453,
+  "calories": 534,
+  "heart_rate": {
+    "avg_bpm": 110,
+    "max_bpm": 140,
+    "zone_summary": {},
+    "samples": []
+  },
+  "steps": {
+    "date": "2026-04-16",
+    "total": 7808
+  },
+  "exported_at": "2026-04-29T11:29:25.122875"
+}
