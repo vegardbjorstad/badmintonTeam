@@ -26,6 +26,8 @@ export function useSession(players, club) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showAddPlayers, setShowAddPlayers] = useState(false);
   const [checkedIn, setCheckedIn]           = useState([]);
+  const [postMatchChoice, setPostMatchChoice] = useState(null); // "auto"|"manual"|"revenge"|"players"|null
+  const [lastSavedMatch, setLastSavedMatch]   = useState(null); // for revansje
   const toastTimer = useRef(null);
 
   const showToast = (msg, type = "info") => {
@@ -79,10 +81,9 @@ export function useSession(players, club) {
     if (error || !data) { showToast("Kunne ikke starte økt", "error"); return; }
     setSession(data);
     setMatchHistory([]); setWaitingQueue([]); setMatchNumber(1); setSessionMatches([]);
-    const match = generateNextMatch(activePlayers, [], []);
-    setCurrentMatch(match);
-    setWaitingQueue(match?.sitting || []);
+    setCurrentMatch(null);
     setScore({ t1: 0, t2: 0 });
+    setPostMatchChoice("first"); // vis valg for første kamp
     return true;
   }
 
@@ -123,11 +124,10 @@ export function useSession(players, club) {
     const newHistory = [...matchHistory, { team1, team2 }];
     setMatchHistory(newHistory);
     setMatchNumber((n) => n + 1);
+    setLastSavedMatch({ team1, team2 });
     showToast("Kamp lagret ✓", "success");
-    const next = generateNextMatch(activePlayers, newHistory, currentMatch.sitting);
-    setCurrentMatch(next);
-    setWaitingQueue(next?.sitting || []);
-    setScore({ t1: 0, t2: 0 });
+    setCurrentMatch(null);
+    setPostMatchChoice("post"); // vis valg etter kamp
   }
 
   async function undoLast(activePlayers) {
@@ -160,6 +160,30 @@ export function useSession(players, club) {
   setWaitingQueue(next?.sitting || []);
   setScore({ t1: 0, t2: 0 });
 }
+
+  function chooseAutoMatch(activePlayers) {
+    const next = generateNextMatch(activePlayers, matchHistory, waitingQueue);
+    setCurrentMatch(next);
+    setWaitingQueue(next?.sitting || []);
+    setScore({ t1: 0, t2: 0 });
+    setPostMatchChoice(null);
+  }
+
+  function setManualMatch(team1, team2, activePlayers) {
+    const sitting = activePlayers.map(p => p.id).filter(id => !team1.includes(id) && !team2.includes(id));
+    setCurrentMatch({ team1, team2, sitting });
+    setWaitingQueue(sitting);
+    setScore({ t1: 0, t2: 0 });
+    setPostMatchChoice(null);
+  }
+
+  function chooseRevenge() {
+    if (!lastSavedMatch) return;
+    // Bytt lagene
+    setCurrentMatch({ team1: lastSavedMatch.team2, team2: lastSavedMatch.team1, sitting: currentMatch?.sitting || waitingQueue });
+    setScore({ t1: 0, t2: 0 });
+    setPostMatchChoice(null);
+  }
 
   function addPlayerToOngoingSession(playerId, playerName, activePlayers) {
     setCheckedIn((prev) => [...prev, playerId]);
@@ -315,9 +339,12 @@ export function useSession(players, club) {
     showEndConfirm, setShowEndConfirm,
     showAddPlayers, setShowAddPlayers,
     checkedIn, setCheckedIn,
+    postMatchChoice, setPostMatchChoice,
+    lastSavedMatch,
     loadAll,
     startSession, endSession,
     saveMatch, undoLast,
+    chooseAutoMatch, setManualMatch, chooseRevenge,
     addPlayerToOngoingSession,
     discardMatch,
     removePlayerFromSession,

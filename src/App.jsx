@@ -144,6 +144,22 @@ export default function App() {
     return () => supabase.removeChannel(ch);
   }, [auth.authState, auth.club?.id]);
 
+  // Naviger til spillere-fanen kun hvis ingen spillere etter lasting
+  const [playersLoaded, setPlayersLoaded] = useState(false);
+
+  useEffect(() => {
+    if (auth.authState !== "app") return;
+    supabase
+      .from("players")
+      .select("id", { count: "exact", head: true })
+      .eq("club_id", auth.club?.id)
+      .or("hidden.is.null,hidden.eq.false")
+      .then(({ count }) => {
+        setPlayersLoaded(true);
+        if (count === 0) setActiveTab("players");
+      });
+  }, [auth.authState]);
+
   async function loadPlayers() {
     if (!auth.club) return;
     const { data } = await supabase
@@ -391,6 +407,19 @@ export default function App() {
         }
         allMatches={sess.allMatches}
         allSessions={sess.allSessions}
+        postMatchChoice={sess.postMatchChoice}
+        setPostMatchChoice={sess.setPostMatchChoice}
+        lastSavedMatch={sess.lastSavedMatch}
+        chooseAutoMatch={() => sess.chooseAutoMatch(activePlayers)}
+        setManualMatch={(t1, t2) => sess.setManualMatch(t1, t2, activePlayers)}
+        chooseRevenge={sess.chooseRevenge}
+        onAddNewPlayer={async (name) => {
+          if (!auth.club) return;
+          const { data, error } = await supabase.from("players").insert({ name, club_id: auth.club.id }).select().single();
+          if (error) { sess.showToast("Feil ved lagring", "error"); return; }
+          await loadPlayers();
+          sess.addPlayerToOngoingSession(data.id, name, activePlayers);
+        }}
       />
     </div>
   );
@@ -594,7 +623,18 @@ function PlayersTab({ players, newName, setNewName, addPlayer, removePlayer, ren
           </div>
         ))}
         {players.length === 0 && (
-          <div style={{ color: "#334155", textAlign: "center", padding: "20px 0" }}>Ingen spillere ennå</div>
+          <div style={{ textAlign: "center", padding: "24px 0 8px" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>👋</div>
+            <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700, color: "#f8fafc", marginBottom: 6 }}>
+              Velkommen til klubben!
+            </div>
+            <div style={{ fontSize: 13, color: "#64748b" }}>
+              Start med å legge til spillerne nedenfor
+            </div>
+          </div>
+        )}
+        {players.length === 0 && (
+          <div style={{ color: "#334155", textAlign: "center", padding: "8px 0" }}>Ingen spillere ennå</div>
         )}
       </div>
     </div>

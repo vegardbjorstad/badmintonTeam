@@ -7,6 +7,158 @@ import Card from "../components/Card";
 import Label from "../components/Label";
 import ScoreBig from "../components/ScoreBig";
 
+// ── MatchChoiceModal ──────────────────────────────────────────────────────────
+
+function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onManual, onPlayers }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 28, maxWidth: 340, width: "100%" }}>
+        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 24, fontWeight: 800, color: "#f8fafc", marginBottom: 6 }}>{title}</div>
+        <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>{subtitle}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {showRevenge && (
+            <button onClick={onRevenge} style={{ height: 54, borderRadius: 14, border: "2px solid #f97316", background: "#f9731611", color: "#f97316", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+              🔄 REVANSJE
+            </button>
+          )}
+          <button onClick={onAuto} style={{ height: 54, borderRadius: 14, border: "none", background: "linear-gradient(135deg,#38bdf8,#6366f1)", color: "#fff", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+            🎲 AUTOMATISK NESTE KAMP
+          </button>
+          <button onClick={onManual} style={{ height: 54, borderRadius: 14, border: "2px solid #38bdf8", background: "none", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+            ✋ VELG LAG MANUELT
+          </button>
+          <button onClick={onPlayers} style={{ height: 46, borderRadius: 14, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+            👥 Endre spillere
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ManualMatchModal ──────────────────────────────────────────────────────────
+
+function ManualMatchModal({ inSessionPlayers, playerName, playerIdx, onConfirm, onBack }) {
+  const [team1, setTeam1] = useState([]);
+  const [team2, setTeam2] = useState([]);
+
+  function togglePlayer(id) {
+    if (team1.includes(id)) { setTeam1(team1.filter(x => x !== id)); return; }
+    if (team2.includes(id)) { setTeam2(team2.filter(x => x !== id)); return; }
+    if (team1.length < 2) { setTeam1([...team1, id]); return; }
+    if (team2.length < 2) { setTeam2([...team2, id]); }
+  }
+
+  const ready = team1.length === 2 && team2.length === 2;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
+        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: "#f8fafc", marginBottom: 4 }}>Velg lag manuelt</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+          Trykk på spillere for å fordele på lag. Første 2 = Lag 1 🟠, neste 2 = Lag 2 🟣
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+          {inSessionPlayers.map((p) => {
+            const inT1 = team1.includes(p.id);
+            const inT2 = team2.includes(p.id);
+            const t1Pos = team1.indexOf(p.id);
+            const t2Pos = team2.indexOf(p.id);
+            return (
+              <div key={p.id} onClick={() => togglePlayer(p.id)} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
+                borderRadius: 12, cursor: "pointer",
+                background: inT1 ? "#1a3a1a" : inT2 ? "#1a1a3a" : "#0a1628",
+                border: `2px solid ${inT1 ? "#f97316" : inT2 ? "#6366f1" : "#1e3a5f"}`,
+              }}>
+                <Avatar name={p.name} size={40} colorIndex={playerIdx(p.id)} />
+                <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: "#f8fafc" }}>{p.name}</span>
+                {inT1 && <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#f97316" }}>LAG 1 🟠</span>}
+                {inT2 && <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#6366f1" }}>LAG 2 🟣</span>}
+                {!inT1 && !inT2 && <span style={{ fontSize: 13, color: "#334155" }}>○</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onBack} style={{ flex: 1, height: 48, borderRadius: 12, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Tilbake</button>
+          <button onClick={() => ready && onConfirm(team1, team2)} disabled={!ready} style={{ flex: 2, height: 48, borderRadius: 12, border: "none", background: ready ? "linear-gradient(135deg,#38bdf8,#6366f1)" : "#1e293b", color: ready ? "#fff" : "#475569", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 16, cursor: ready ? "pointer" : "default" }}>
+            {ready ? "Start kamp ✓" : `Velg ${4 - team1.length - team2.length} til`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ManagePlayersModal ────────────────────────────────────────────────────────
+
+function ManagePlayersModal({ inSessionPlayers, notInSessionPlayers, playerName, playerIdx, addPlayerToOngoingSession, removePlayerFromSession, onAddNewPlayer, onClose }) {
+  const [newName, setNewName] = useState("");
+  const [adding, setAdding]   = useState(false);
+
+  async function handleAddNew() {
+    if (!newName.trim()) return;
+    setAdding(true);
+    await onAddNewPlayer(newName.trim());
+    setNewName("");
+    setAdding(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: "#f8fafc", marginBottom: 16 }}>Endre spillere</div>
+
+        {/* I økten nå */}
+        <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 8 }}>I ØKTEN NÅ</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+          {inSessionPlayers.map((p) => (
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#0a1628", borderRadius: 10, border: "1px solid #1e3a5f" }}>
+              <Avatar name={p.name} size={36} colorIndex={playerIdx(p.id)} />
+              <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: "#f8fafc" }}>{p.name}</span>
+              <button onClick={() => removePlayerFromSession(p.id)} style={{ background: "none", border: "2px solid #7f1d1d", color: "#ef4444", padding: "4px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 12 }}>Fjern</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Legg til eksisterende */}
+        {notInSessionPlayers.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 8 }}>LEGG TIL FRA KLUBBEN</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+              {notInSessionPlayers.map((p) => (
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#0a1628", borderRadius: 10, border: "1px solid #1e3a5f" }}>
+                  <Avatar name={p.name} size={36} colorIndex={playerIdx(p.id)} />
+                  <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: "#94a3b8" }}>{p.name}</span>
+                  <button onClick={() => addPlayerToOngoingSession(p.id)} style={{ background: "none", border: "2px solid #38bdf8", color: "#38bdf8", padding: "4px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 12 }}>+ Legg til</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Registrer ny spiller */}
+        <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 8 }}>REGISTRER NY SPILLER</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddNew()}
+            placeholder="Fullt navn..."
+            style={{ flex: 1, height: 44, borderRadius: 10, border: "2px solid #1e3a5f", background: "#020617", color: "#f8fafc", fontSize: 15, padding: "0 12px", outline: "none", fontFamily: "'Barlow',sans-serif" }}
+          />
+          <button onClick={handleAddNew} disabled={!newName.trim() || adding} style={{ width: 44, height: 44, borderRadius: 10, background: "#38bdf8", border: "none", color: "#0f172a", fontSize: 24, fontWeight: 700, cursor: "pointer" }}>+</button>
+        </div>
+
+        <button onClick={onClose} style={{ width: "100%", height: 48, borderRadius: 12, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Tilbake</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Session({
   currentMatch,
   matchNumber,
@@ -30,10 +182,17 @@ export default function Session({
   removePlayerFromSession,
   allMatches,
   allSessions,
+  postMatchChoice,
+  setPostMatchChoice,
+  lastSavedMatch,
+  chooseAutoMatch,
+  setManualMatch,
+  chooseRevenge,
+  onAddNewPlayer,
 }) {
   const [showZeroModal, setShowZeroModal] = useState(false);
 
-  if (!currentMatch) {
+  if (!currentMatch && !postMatchChoice) {
     return <div style={{ padding: 20, color: "#f8fafc" }}>Ingen kamp</div>;
   }
 
@@ -140,7 +299,55 @@ export default function Session({
         </div>
       )}
 
-      {/* TOPBAR */}
+      {/* ── VELG FØRSTE KAMP ──────────────────────────────────────── */}
+      {postMatchChoice === "first" && (
+        <MatchChoiceModal
+          title="Første kamp"
+          subtitle="Hvordan vil du sette opp første kamp?"
+          showRevenge={false}
+          onAuto={() => chooseAutoMatch(inSessionPlayers)}
+          onManual={() => setPostMatchChoice("manual")}
+          onPlayers={() => setPostMatchChoice("players")}
+        />
+      )}
+
+      {/* ── VELG NESTE KAMP ───────────────────────────────────────── */}
+      {postMatchChoice === "post" && (
+        <MatchChoiceModal
+          title="Kamp lagret! ✓"
+          subtitle="Hva vil du gjøre nå?"
+          showRevenge={!!lastSavedMatch}
+          onRevenge={chooseRevenge}
+          onAuto={() => chooseAutoMatch(inSessionPlayers)}
+          onManual={() => setPostMatchChoice("manual")}
+          onPlayers={() => setPostMatchChoice("players")}
+        />
+      )}
+
+      {/* ── MANUELT LAG-VALG ──────────────────────────────────────── */}
+      {postMatchChoice === "manual" && (
+        <ManualMatchModal
+          inSessionPlayers={inSessionPlayers}
+          playerName={playerName}
+          playerIdx={playerIdx}
+          onConfirm={(team1, team2) => setManualMatch(team1, team2, inSessionPlayers)}
+          onBack={() => setPostMatchChoice(currentMatch ? "post" : "first")}
+        />
+      )}
+
+      {/* ── ENDRE SPILLERE ────────────────────────────────────────── */}
+      {postMatchChoice === "players" && (
+        <ManagePlayersModal
+          inSessionPlayers={inSessionPlayers}
+          notInSessionPlayers={notInSessionPlayers}
+          playerName={playerName}
+          playerIdx={playerIdx}
+          addPlayerToOngoingSession={addPlayerToOngoingSession}
+          removePlayerFromSession={removePlayerFromSession}
+          onAddNewPlayer={onAddNewPlayer}
+          onClose={() => setPostMatchChoice(currentMatch ? "post" : "first")}
+        />
+      )}
       <div style={{
         background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
         padding: "18px 16px 14px",
@@ -174,8 +381,8 @@ export default function Session({
         </button>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div style={{ padding: 16 }}>
+      {/* MAIN CONTENT — kun når kamp er satt opp */}
+      {currentMatch && <div style={{ padding: 16 }}>
 
         {/* ADMINISTRER SPILLERE */}
         <div style={{ marginBottom: 16 }}>
@@ -427,6 +634,7 @@ export default function Session({
         </Card>
 
       </div>
+      } {/* end currentMatch */}
     </>
   );
 }
