@@ -28,6 +28,8 @@ export default function Session({
   addPlayerToOngoingSession,
   inSessionPlayers,
   removePlayerFromSession,
+  allMatches,
+  allSessions,
 }) {
   const [showZeroModal, setShowZeroModal] = useState(false);
 
@@ -40,9 +42,35 @@ export default function Session({
 
   function handleSave() {
     if (isZeroZero) { setShowZeroModal(true); return; }
-    if (isDraw) return; // blokkert av UI
+    if (isDraw) return;
     saveMatch();
   }
+
+  // Finn siste kamp mellom to lag (rekkefølge og side spiller ingen rolle)
+  function findLastH2H(team1ids, team2ids) {
+    const a = new Set(team1ids);
+    const b = new Set(team2ids);
+    const sameTeam = (ids, set) =>
+      ids.every(id => set.has(id)) && set.size === ids.length;
+
+    const deletedIds = new Set((allSessions || []).filter(s => s.deleted_at).map(s => s.id));
+    const allHistory = [...(allMatches || []), ...(sessionMatches || [])].filter(m => !deletedIds.has(m.session_id));
+    for (let i = allHistory.length - 1; i >= 0; i--) {
+      const m = allHistory[i];
+      const mt1 = new Set([m.team1_p1, m.team1_p2]);
+      const mt2 = new Set([m.team2_p1, m.team2_p2]);
+      const normal   = sameTeam([...a], mt1) && sameTeam([...b], mt2);
+      const reversed = sameTeam([...b], mt1) && sameTeam([...a], mt2);
+      if (normal || reversed) {
+        const s1 = normal ? m.score_team1 : m.score_team2;
+        const s2 = normal ? m.score_team2 : m.score_team1;
+        return { s1, s2 };
+      }
+    }
+    return null;
+  }
+
+  const h2h = currentMatch ? findLastH2H(currentMatch.team1, currentMatch.team2) : null;
 
   return (
     <>
@@ -228,17 +256,33 @@ export default function Session({
           )}
         </div>
 
-        {/* LAG 1 */}
         <Card style={{ marginBottom: 14 }}>
           <div style={{ padding: "18px 18px 10px" }}>
             <Label>LAG 1 🟠</Label>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {currentMatch.team1.map((id) => (
-                <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={playerName(id)} size={48} colorIndex={playerIdx(id)} />
-                  <span style={{ fontSize: 18, fontWeight: 600 }}>{playerName(id)}</span>
-                </div>
-              ))}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {currentMatch.team1.map((id) => (
+                  <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Avatar name={playerName(id)} size={48} colorIndex={playerIdx(id)} />
+                    <span style={{ fontSize: 18, fontWeight: 600 }}>{playerName(id)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                {h2h ? (
+                  <>
+                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, letterSpacing: "0.08em", marginBottom: 2 }}>SISTE MØTE</div>
+                    <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: h2h.s1 > h2h.s2 ? "#16a34a" : "#ef4444" }}>
+                      {h2h.s1}–{h2h.s2}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, letterSpacing: "0.08em", marginBottom: 2 }}>FØRSTE</div>
+                    <div style={{ fontSize: 13, color: "#475569", fontWeight: 600 }}>møte</div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </Card>
@@ -254,13 +298,30 @@ export default function Session({
         <Card style={{ marginBottom: 14 }}>
           <div style={{ padding: "10px 18px 18px" }}>
             <Label>LAG 2 🟣</Label>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {currentMatch.team2.map((id) => (
-                <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={playerName(id)} size={48} colorIndex={playerIdx(id)} />
-                  <span style={{ fontSize: 18, fontWeight: 600 }}>{playerName(id)}</span>
-                </div>
-              ))}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {currentMatch.team2.map((id) => (
+                  <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Avatar name={playerName(id)} size={48} colorIndex={playerIdx(id)} />
+                    <span style={{ fontSize: 18, fontWeight: 600 }}>{playerName(id)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                {h2h ? (
+                  <>
+                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, letterSpacing: "0.08em", marginBottom: 2 }}>SISTE MØTE</div>
+                    <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: h2h.s2 > h2h.s1 ? "#16a34a" : "#ef4444" }}>
+                      {h2h.s2}–{h2h.s1}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, letterSpacing: "0.08em", marginBottom: 2 }}>FØRSTE</div>
+                    <div style={{ fontSize: 13, color: "#475569", fontWeight: 600 }}>møte</div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </Card>

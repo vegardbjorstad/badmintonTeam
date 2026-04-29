@@ -49,51 +49,29 @@ export default function SessionDetail({
 
   return (
     <>
-      {/* TOPBAR */}
-      <div
-        style={{
-          background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
-          padding: "18px 16px 14px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          borderBottom: "2px solid #1e3a5f",
-        }}
-      >
-        <button
-          onClick={() => setScreen("stats")}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#94a3b8",
-            fontSize: 22,
-            cursor: "pointer",
-            padding: 4,
-          }}
-        >
-          ←
-        </button>
-        <div
-          style={{
-            fontFamily: "'Barlow Condensed',sans-serif",
-            fontSize: 22,
-            fontWeight: 800,
-            color: "#38bdf8",
-            letterSpacing: "0.04em",
-            flex: 1,
-          }}
-        >
-          <div>{fmtDate(ds.date)}</div>
-          {fmtTime(ds.created_at) && (
-            <div style={{ fontSize: 14, color: "#64748b", fontWeight: 600, marginTop: 2 }}>
-              kl. {fmtTime(ds.created_at)}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* INNHOLD */}
       <div style={{ padding: 16 }}>
+
+        {/* Tilbake + dato-header */}
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
+          <button
+            onClick={() => setScreen(null)}
+            style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer", padding: 4, width: 36 }}
+          >
+            ←
+          </button>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 20, fontWeight: 800, color: "#38bdf8" }}>
+              {fmtDate(ds.date)}
+            </div>
+            {fmtTime(ds.created_at) && (
+              <div style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>
+                kl. {fmtTime(ds.created_at)}
+              </div>
+            )}
+          </div>
+          <div style={{ width: 36 }} />
+        </div>
 
         {/* Slett-knapp */}
         <button

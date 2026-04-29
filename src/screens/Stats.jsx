@@ -4,6 +4,7 @@ import { useState } from "react";
 import Card from "../components/Card";
 import Label from "../components/Label";
 import StatsTable from "../components/StatsTable";
+import PlayerProfile from "./PlayerProfile";
 
 const fmtDate = (iso) => {
   const d = new Date(iso);
@@ -44,13 +45,27 @@ export default function Stats({
   totalStats,
   sessionList,
   allSessions,
+  allMatches,
+  players,
   playerName,
   setDetailSession,
   setScreen,
   restoreSession,
   hideSession,
 }) {
-  const [confirmDelete, setConfirmDelete] = useState(null); // session-objekt som venter på bekreftelse
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  // Vis spillerprofil hvis valgt
+  if (selectedPlayer) return (
+    <PlayerProfile
+      player={selectedPlayer}
+      players={players}
+      allMatches={allMatches}
+      allSessions={allSessions}
+      onBack={() => setSelectedPlayer(null)}
+    />
+  );
 
   const tabs = session
     ? [
@@ -66,44 +81,6 @@ export default function Stats({
 
   return (
     <>
-      {/* TOPBAR */}
-      <div
-        style={{
-          background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
-          padding: "18px 16px 14px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          borderBottom: "2px solid #1e3a5f",
-        }}
-      >
-        <button
-          onClick={() => setScreen(session ? "session" : "home")}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#94a3b8",
-            fontSize: 22,
-            cursor: "pointer",
-            padding: 4,
-          }}
-        >
-          ←
-        </button>
-        <div
-          style={{
-            fontFamily: "'Barlow Condensed',sans-serif",
-            fontSize: 22,
-            fontWeight: 800,
-            color: "#38bdf8",
-            letterSpacing: "0.04em",
-            flex: 1,
-          }}
-        >
-          STATISTIKK
-        </div>
-      </div>
-
       {/* FANE-KNAPPER */}
       <div style={{ display: "flex", borderBottom: "2px solid #1e3a5f" }}>
         {tabs.map(([key, label]) => (
@@ -137,7 +114,50 @@ export default function Stats({
         {statsTab === "session" && <StatsTable rows={sessionStats} />}
 
         {/* Sesong */}
-        {statsTab === "total" && <StatsTable rows={totalStats} />}
+        {statsTab === "total" && (
+          <div>
+            <div style={{ fontSize: 12, color: "#475569", marginBottom: 10 }}>
+              Trykk på en spiller for personlig statistikk
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "#1e3a5f", borderRadius: 12, overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 40px 40px 52px", gap: 6, padding: "10px 14px", background: "#0a1628" }}>
+                {["Spiller", "K", "S", "T", "%"].map(h => (
+                  <div key={h} style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.08em", textAlign: h === "Spiller" ? "left" : "right" }}>{h}</div>
+                ))}
+              </div>
+              {(totalStats || []).map((row, i) => (
+                <div
+                  key={row.id}
+                  onClick={() => setSelectedPlayer(players.find(p => p.id === row.id))}
+                  style={{
+                    display: "grid", gridTemplateColumns: "1fr 40px 40px 40px 52px",
+                    gap: 6, padding: "12px 14px",
+                    background: i % 2 === 0 ? "#0f172a" : "#0a1628",
+                    alignItems: "center", cursor: "pointer",
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#38bdf8", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, color: "#475569", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, minWidth: 16 }}>{i + 1}.</span>
+                    {row.name}
+                    <span style={{ fontSize: 11, color: "#475569" }}>›</span>
+                  </div>
+                  <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{row.games}</div>
+                  <div style={{ textAlign: "right", fontSize: 13, color: "#16a34a" }}>{row.wins}</div>
+                  <div style={{ textAlign: "right", fontSize: 13, color: "#ef4444" }}>{row.losses}</div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{
+                      fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15,
+                      color: row.pct >= 50 ? "#16a34a" : "#ef4444",
+                    }}>
+                      {row.pct}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Historikk */}
         {statsTab === "history" && (
@@ -152,7 +172,6 @@ export default function Stats({
                   key={s.id}
                   onClick={() => {
                     setDetailSession(s);
-                    setScreen("sessionDetail");
                   }}
                   style={{
                     background: "#0f172a",
