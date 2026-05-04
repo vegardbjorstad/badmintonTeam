@@ -21,15 +21,21 @@ function partnerOf(match, playerId) {
   return null;
 }
 
+function opponentOf(match, playerId) {
+  const onTeam1 = match.team1_p1 === playerId || match.team1_p2 === playerId;
+  return onTeam1 ? match.team2_p1 : match.team1_p1;
+}
+
 function didWin(match, playerId) {
   const onTeam1 = match.team1_p1 === playerId || match.team1_p2 === playerId;
   return (onTeam1 && match.winner === 1) || (!onTeam1 && match.winner === 2);
 }
 
-function computePlayerStats(allMatches, allSessions, playerId) {
+function computePlayerStats(allMatches, allSessions, playerId, matchType) {
   const deletedIds = new Set((allSessions || []).filter(s => s.deleted_at).map(s => s.id));
   const matches = matchesForPlayer(allMatches, playerId)
-    .filter(m => !deletedIds.has(m.session_id));
+    .filter(m => !deletedIds.has(m.session_id))
+    .filter(m => (m.match_type || "doubles") === matchType);
 
   if (matches.length === 0) return null;
 
@@ -41,37 +47,41 @@ function computePlayerStats(allMatches, allSessions, playerId) {
     pAgainst += onTeam1 ? m.score_team2 : m.score_team1;
   });
 
-  // Per partner totalt
+  // Per partner totalt (kun dobbel)
   const partnerMap = {};
-  matches.forEach(m => {
-    const pid = partnerOf(m, playerId);
-    if (!pid) return;
-    if (!partnerMap[pid]) partnerMap[pid] = { wins: 0, games: 0 };
-    partnerMap[pid].games++;
-    if (didWin(m, playerId)) partnerMap[pid].wins++;
-  });
-
-  // Per partner per økt
-  const partnerTrendRaw = {};
-  matches.forEach(m => {
-    const pid = partnerOf(m, playerId);
-    if (!pid || !m.session_id) return;
-    if (!partnerTrendRaw[pid]) partnerTrendRaw[pid] = {};
-    if (!partnerTrendRaw[pid][m.session_id]) {
-      partnerTrendRaw[pid][m.session_id] = { wins: 0, games: 0, pFor: 0, pAgainst: 0, date: null };
-    }
-    const entry = partnerTrendRaw[pid][m.session_id];
-    const onTeam1 = m.team1_p1 === playerId || m.team1_p2 === playerId;
-    entry.games++;
-    entry.pFor     += onTeam1 ? m.score_team1 : m.score_team2;
-    entry.pAgainst += onTeam1 ? m.score_team2 : m.score_team1;
-    if (didWin(m, playerId)) entry.wins++;
-  });
-  (allSessions || []).forEach(s => {
-    Object.values(partnerTrendRaw).forEach(sm => {
-      if (sm[s.id]) sm[s.id].date = s.date;
+  if (matchType === "doubles") {
+    matches.forEach(m => {
+      const pid = partnerOf(m, playerId);
+      if (!pid) return;
+      if (!partnerMap[pid]) partnerMap[pid] = { wins: 0, games: 0 };
+      partnerMap[pid].games++;
+      if (didWin(m, playerId)) partnerMap[pid].wins++;
     });
-  });
+  }
+
+  // Per partner per økt (kun dobbel)
+  const partnerTrendRaw = {};
+  if (matchType === "doubles") {
+    matches.forEach(m => {
+      const pid = partnerOf(m, playerId);
+      if (!pid || !m.session_id) return;
+      if (!partnerTrendRaw[pid]) partnerTrendRaw[pid] = {};
+      if (!partnerTrendRaw[pid][m.session_id]) {
+        partnerTrendRaw[pid][m.session_id] = { wins: 0, games: 0, pFor: 0, pAgainst: 0, date: null };
+      }
+      const entry = partnerTrendRaw[pid][m.session_id];
+      const onTeam1 = m.team1_p1 === playerId || m.team1_p2 === playerId;
+      entry.games++;
+      entry.pFor     += onTeam1 ? m.score_team1 : m.score_team2;
+      entry.pAgainst += onTeam1 ? m.score_team2 : m.score_team1;
+      if (didWin(m, playerId)) entry.wins++;
+    });
+    (allSessions || []).forEach(s => {
+      Object.values(partnerTrendRaw).forEach(sm => {
+        if (sm[s.id]) sm[s.id].date = s.date;
+      });
+    });
+  }
   const partnerTrendSorted = {};
   Object.entries(partnerTrendRaw).forEach(([pid, sm]) => {
     partnerTrendSorted[pid] = Object.entries(sm)
@@ -84,6 +94,18 @@ function computePlayerStats(allMatches, allSessions, playerId) {
         wins: v.wins, games: v.games,
       }));
   });
+
+  // Head-to-head per motstander (singel)
+  const opponentMap = {};
+  if (matchType === "singles") {
+    matches.forEach(m => {
+      const pid = opponentOf(m, playerId);
+      if (!pid) return;
+      if (!opponentMap[pid]) opponentMap[pid] = { wins: 0, games: 0 };
+      opponentMap[pid].games++;
+      if (didWin(m, playerId)) opponentMap[pid].wins++;
+    });
+  }
 
   // Utvikling per økt (total)
   const smTotal = {};
@@ -108,7 +130,7 @@ function computePlayerStats(allMatches, allSessions, playerId) {
     games: matches.length, wins, losses: matches.length - wins,
     pct: Math.round((wins / matches.length) * 100),
     pFor, pAgainst, diff: pFor - pAgainst,
-    last10, partnerMap, partnerTrendSorted, trend,
+    last10, partnerMap, partnerTrendSorted, opponentMap, trend,
   };
 }
 
@@ -187,7 +209,6 @@ function PartnerTab({ partnerRows, partnerTrendSorted }) {
 
   return (
     <div>
-      {/* Partner-velger */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
         {partnerRows.map((p, pi) => {
           const active = selectedId === p.id;
@@ -207,7 +228,6 @@ function PartnerTab({ partnerRows, partnerTrendSorted }) {
         })}
       </div>
 
-      {/* Metrikk-velger */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         {[["pct", "Vinner %"], ["diff", "Poengdiff"]].map(([key, label]) => (
           <button key={key} onClick={() => setMetric(key)} style={{
@@ -223,12 +243,10 @@ function PartnerTab({ partnerRows, partnerTrendSorted }) {
         ))}
       </div>
 
-      {/* Graf */}
       <div style={{ background: "#0f172a", border: "1px solid #1e3a5f", borderRadius: 12, padding: "16px 12px", marginBottom: 12 }}>
         <LineGraph trend={trend} metric={metric} />
       </div>
 
-      {/* Sammendrag */}
       {selected && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
@@ -244,7 +262,6 @@ function PartnerTab({ partnerRows, partnerTrendSorted }) {
         </div>
       )}
 
-      {/* Tabell */}
       <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "#1e3a5f", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 40px 56px", gap: 8, padding: "10px 14px", background: "#0a1628" }}>
           {["Partner", "K", "S", "%"].map(h => (
@@ -279,6 +296,46 @@ function PartnerTab({ partnerRows, partnerTrendSorted }) {
   );
 }
 
+// ── Head-to-head-tab (singel) ─────────────────────────────────────────────────
+
+function H2HTab({ opponentRows }) {
+  if (opponentRows.length === 0) return (
+    <div style={{ textAlign: "center", color: "#475569", padding: "40px 0" }}>Ingen singelkamper registrert</div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 1, background: "#1e3a5f", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 40px 56px", gap: 8, padding: "10px 14px", background: "#0a1628" }}>
+          {["Motstander", "K", "S", "%"].map(h => (
+            <div key={h} style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.08em", textAlign: h === "Motstander" ? "left" : "right" }}>{h}</div>
+          ))}
+        </div>
+        {opponentRows.map((p, i) => (
+          <div key={p.id} style={{
+            display: "grid", gridTemplateColumns: "1fr 40px 40px 56px",
+            gap: 8, padding: "12px 14px",
+            background: i % 2 === 0 ? "#0f172a" : "#0a1628",
+            alignItems: "center",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: PARTNER_COLORS[i % PARTNER_COLORS.length], flexShrink: 0 }} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#f8fafc" }}>{p.name}</span>
+            </div>
+            <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{p.games}</div>
+            <div style={{ textAlign: "right", fontSize: 13, color: "#94a3b8" }}>{p.wins}</div>
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15, color: p.pct >= 50 ? "#16a34a" : "#ef4444" }}>
+                {p.pct}%
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Utvikling-tab ─────────────────────────────────────────────────────────────
 
 function TrendTab({ trend }) {
@@ -286,7 +343,6 @@ function TrendTab({ trend }) {
 
   return (
     <div>
-      {/* Metrikk-velger */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         {[["pct", "Vinner %"], ["diff", "Poengdiff"]].map(([key, label]) => (
           <button key={key} onClick={() => setMetric(key)} style={{
@@ -350,96 +406,134 @@ function TrendTab({ trend }) {
 // ── Hoved-komponent ───────────────────────────────────────────────────────────
 
 export default function PlayerProfile({ player, players, allMatches, allSessions, onBack }) {
-  const [tab, setTab] = useState("total");
-  const stats = computePlayerStats(allMatches, allSessions, player.id);
-  const playerIdx = (id) => players.findIndex(p => p.id === id);
+  const [tab, setTab]           = useState("total");
+  const [matchType, setMatchType] = useState("doubles");
+
+  const stats = computePlayerStats(allMatches, allSessions, player.id, matchType);
+  const playerIdx  = (id) => players.findIndex(p => p.id === id);
   const playerName = (id) => players.find(p => p.id === id)?.name || "?";
 
-  if (!stats) return (
-    <div style={{ padding: 24, textAlign: "center", color: "#475569" }}>Ingen kamper registrert ennå</div>
-  );
-
-  const partnerRows = Object.entries(stats.partnerMap)
+  const partnerRows = stats ? Object.entries(stats.partnerMap)
     .map(([id, v]) => ({ id, name: playerName(id), games: v.games, wins: v.wins, losses: v.games - v.wins, pct: Math.round((v.wins / v.games) * 100) }))
-    .sort((a, b) => b.games - a.games);
+    .sort((a, b) => b.games - a.games) : [];
 
-  const TABS = [["total", "Totalt"], ["partner", "Per partner"], ["trend", "Utvikling"]];
+  const opponentRows = stats ? Object.entries(stats.opponentMap || {})
+    .map(([id, v]) => ({ id, name: playerName(id), games: v.games, wins: v.wins, losses: v.games - v.wins, pct: Math.round((v.wins / v.games) * 100) }))
+    .sort((a, b) => b.games - a.games) : [];
+
+  const TABS_DOUBLES = [["total", "Totalt"], ["partner", "Per partner"], ["trend", "Utvikling"]];
+  const TABS_SINGLES = [["total", "Totalt"], ["h2h", "Head-to-head"], ["trend", "Utvikling"]];
+  const TABS = matchType === "singles" ? TABS_SINGLES : TABS_DOUBLES;
+
+  // Reset tab hvis vi bytter format og nåværende tab ikke finnes
+  const validTabs = TABS.map(([key]) => key);
+  const activeTab = validTabs.includes(tab) ? tab : "total";
 
   return (
     <div style={{ padding: "16px 16px" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 22, cursor: "pointer", padding: 4, width: 36 }}>←</button>
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Avatar name={player.name} size={44} colorIndex={playerIdx(player.id)} />
           <div>
             <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: "#f8fafc" }}>{player.name.toUpperCase()}</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>{stats.games} kamper totalt</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{stats ? stats.games : 0} {matchType === "singles" ? "singelkamper" : "dobbel kamper"}</div>
           </div>
         </div>
         <div style={{ width: 36 }} />
       </div>
 
-      {/* Faner */}
-      <div style={{ display: "flex", borderBottom: "2px solid #1e3a5f", marginBottom: 16 }}>
-        {TABS.map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)} style={{
-            flex: 1, height: 42, background: "none", border: "none",
-            borderBottom: `3px solid ${tab === key ? "#38bdf8" : "transparent"}`,
-            color: tab === key ? "#38bdf8" : "#64748b",
-            fontFamily: "'Barlow Condensed',sans-serif",
-            fontWeight: 700, fontSize: 13, letterSpacing: "0.06em",
-            cursor: "pointer", marginBottom: -2,
-          }}>
-            {label.toUpperCase()}
-          </button>
-        ))}
+      {/* Singel / Dobbel-velger */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button
+          onClick={() => setMatchType("doubles")}
+          style={{ flex: 1, height: 38, borderRadius: 10, border: `2px solid ${matchType === "doubles" ? "#38bdf8" : "#1e3a5f"}`, background: matchType === "doubles" ? "#0c2a3f" : "none", color: matchType === "doubles" ? "#38bdf8" : "#475569", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+          DOBBEL
+        </button>
+        <button
+          onClick={() => setMatchType("singles")}
+          style={{ flex: 1, height: 38, borderRadius: 10, border: `2px solid ${matchType === "singles" ? "#a78bfa" : "#1e3a5f"}`, background: matchType === "singles" ? "#1a1040" : "none", color: matchType === "singles" ? "#a78bfa" : "#475569", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+          SINGEL
+        </button>
       </div>
 
-      {/* TOTALT */}
-      {tab === "total" && (
-        <div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {[
-              { label: "Vinner%",   value: `${stats.pct}%`,  color: stats.pct >= 50 ? "#16a34a" : "#ef4444" },
-              { label: "Kamper",    value: stats.games },
-              { label: "Seire",     value: stats.wins,        color: "#16a34a" },
-              { label: "Tap",       value: stats.losses,      color: "#ef4444" },
-              { label: "Poeng for", value: stats.pFor },
-              { label: "Poengdiff", value: stats.diff > 0 ? `+${stats.diff}` : stats.diff, color: stats.diff >= 0 ? "#16a34a" : "#ef4444" },
-            ].map(({ label, value, color }) => (
-              <div key={label} style={{ background: "#0f172a", border: "1px solid #1e3a5f", borderRadius: 12, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.08em", marginBottom: 4 }}>{label.toUpperCase()}</div>
-                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 26, fontWeight: 800, color: color || "#f8fafc" }}>{value}</div>
-              </div>
-            ))}
-          </div>
-          <Label>FORM — SISTE {stats.last10.length} KAMPER</Label>
-          <div style={{ display: "flex", gap: 6 }}>
-            {stats.last10.map((w, i) => (
-              <div key={i} style={{
-                flex: 1, height: 32, borderRadius: 6,
-                background: w ? "#16a34a" : "#7f1d1d",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800,
-                fontSize: 13, color: w ? "#bbf7d0" : "#fca5a5",
-              }}>
-                {w ? "S" : "T"}
-              </div>
-            ))}
-          </div>
+      {/* Ingen data */}
+      {!stats && (
+        <div style={{ padding: 32, textAlign: "center", color: "#475569", fontSize: 15 }}>
+          Ingen {matchType === "singles" ? "singel" : "dobbel"}kamper registrert ennå
         </div>
       )}
 
-      {/* PER PARTNER */}
-      {tab === "partner" && (
-        <PartnerTab partnerRows={partnerRows} partnerTrendSorted={stats.partnerTrendSorted} />
-      )}
+      {stats && (
+        <>
+          {/* Faner */}
+          <div style={{ display: "flex", borderBottom: "2px solid #1e3a5f", marginBottom: 16 }}>
+            {TABS.map(([key, label]) => (
+              <button key={key} onClick={() => setTab(key)} style={{
+                flex: 1, height: 42, background: "none", border: "none",
+                borderBottom: `3px solid ${activeTab === key ? (matchType === "singles" ? "#a78bfa" : "#38bdf8") : "transparent"}`,
+                color: activeTab === key ? (matchType === "singles" ? "#a78bfa" : "#38bdf8") : "#64748b",
+                fontFamily: "'Barlow Condensed',sans-serif",
+                fontWeight: 700, fontSize: 13, letterSpacing: "0.06em",
+                cursor: "pointer", marginBottom: -2,
+              }}>
+                {label.toUpperCase()}
+              </button>
+            ))}
+          </div>
 
-      {/* UTVIKLING */}
-      {tab === "trend" && (
-        <TrendTab trend={stats.trend} />
+          {/* TOTALT */}
+          {activeTab === "total" && (
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                {[
+                  { label: "Vinner%",   value: `${stats.pct}%`,  color: stats.pct >= 50 ? "#16a34a" : "#ef4444" },
+                  { label: "Kamper",    value: stats.games },
+                  { label: "Seire",     value: stats.wins,        color: "#16a34a" },
+                  { label: "Tap",       value: stats.losses,      color: "#ef4444" },
+                  { label: "Poeng for", value: stats.pFor },
+                  { label: "Poengdiff", value: stats.diff > 0 ? `+${stats.diff}` : stats.diff, color: stats.diff >= 0 ? "#16a34a" : "#ef4444" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ background: "#0f172a", border: "1px solid #1e3a5f", borderRadius: 12, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, letterSpacing: "0.08em", marginBottom: 4 }}>{label.toUpperCase()}</div>
+                    <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 26, fontWeight: 800, color: color || "#f8fafc" }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <Label>FORM — SISTE {stats.last10.length} KAMPER</Label>
+              <div style={{ display: "flex", gap: 6 }}>
+                {stats.last10.map((w, i) => (
+                  <div key={i} style={{
+                    flex: 1, height: 32, borderRadius: 6,
+                    background: w ? "#16a34a" : "#7f1d1d",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800,
+                    fontSize: 13, color: w ? "#bbf7d0" : "#fca5a5",
+                  }}>
+                    {w ? "S" : "T"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* PER PARTNER (dobbel) */}
+          {activeTab === "partner" && matchType === "doubles" && (
+            <PartnerTab partnerRows={partnerRows} partnerTrendSorted={stats.partnerTrendSorted} />
+          )}
+
+          {/* HEAD-TO-HEAD (singel) */}
+          {activeTab === "h2h" && matchType === "singles" && (
+            <H2HTab opponentRows={opponentRows} />
+          )}
+
+          {/* UTVIKLING */}
+          {activeTab === "trend" && (
+            <TrendTab trend={stats.trend} />
+          )}
+        </>
       )}
     </div>
   );

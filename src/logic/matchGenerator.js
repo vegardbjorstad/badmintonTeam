@@ -7,7 +7,9 @@
  *  - hvem som sitter over
  *  - hvilken side (team1/team2) spillerne har stått på
  *
- * Pauselogikk:
+ * Støtter matchType: "doubles" (default) og "singles"
+ *
+ * Pauselogikk (doubles):
  *  - 4 spillere: ingen pause, alle spiller alltid
  *  - 5 spillere: 1 sitter over, maks 4 kamper på rad
  *  - 6 spillere: 2 sitter over — valgt slik at ingen sitter med
@@ -15,12 +17,73 @@
  *    kamper prioriteres til pause
  *  - 7+ spillere: samme prinsipp, skalerer automatisk
  *
- * Returnerer: { team1, team2, sitting }
+ * Returnerer: { team1, team2, sitting, match_type }
  */
 
 const MAX_CONSECUTIVE = 4;
 
-export default function generateNextMatch(activePlayers, matchHistory, waitingQueue) {
+// ── Singel-generator ──────────────────────────────────────────────────────────
+
+function generateSinglesMatch(activePlayers, matchHistory) {
+  if (activePlayers.length < 2) return null;
+
+  const ids = activePlayers.map(p => p.id);
+
+  // Tell kamper mot hverandre
+  const h2h = Object.fromEntries(ids.map(id => [id, Object.fromEntries(ids.map(j => [j, 0]))]));
+  const gamesPlayed = Object.fromEntries(ids.map(id => [id, 0]));
+
+  matchHistory.forEach(m => {
+    const p1 = m.team1[0];
+    const p2 = m.team2[0];
+    if (!p1 || !p2) return;
+    if (p1 in h2h && p2 in h2h[p1]) { h2h[p1][p2]++; h2h[p2][p1]++; }
+    if (p1 in gamesPlayed) gamesPlayed[p1]++;
+    if (p2 in gamesPlayed) gamesPlayed[p2]++;
+  });
+
+  // Hvem sitter over? (antall spillere minus 2)
+  const numSitting = ids.length - 2;
+  let sittingIds = [];
+
+  if (numSitting > 0) {
+    // Sorter etter flest spilte kamper — de med mest spiller færrest sitter over
+    sittingIds = [...ids]
+      .sort((a, b) => gamesPlayed[b] - gamesPlayed[a])
+      .slice(0, numSitting);
+  }
+
+  const playing = ids.filter(id => !sittingIds.includes(id));
+
+  // Finn paret med færrest møter
+  let bestPair = null, bestCount = Infinity;
+  for (let i = 0; i < playing.length - 1; i++) {
+    for (let j = i + 1; j < playing.length; j++) {
+      const count = h2h[playing[i]][playing[j]] ?? 0;
+      if (count < bestCount) {
+        bestCount = count;
+        bestPair = [playing[i], playing[j]];
+      }
+    }
+  }
+
+  if (!bestPair) bestPair = [playing[0], playing[1]];
+
+  return {
+    team1: [bestPair[0]],
+    team2: [bestPair[1]],
+    sitting: sittingIds,
+    match_type: "singles",
+  };
+}
+
+// ── Dobbel-generator ──────────────────────────────────────────────────────────
+
+export default function generateNextMatch(activePlayers, matchHistory, waitingQueue, matchType = "doubles") {
+  if (matchType === "singles") {
+    return generateSinglesMatch(activePlayers, matchHistory);
+  }
+
   if (activePlayers.length < 4) return null;
 
   const ids        = activePlayers.map((p) => p.id);
@@ -32,8 +95,6 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
   const consecutivePlayed = Object.fromEntries(ids.map((id) => [id, 0]));
   const consecutiveSat    = Object.fromEntries(ids.map((id) => [id, 0]));
 
-  // Antall ganger to spillere har sittet over SAMMEN — brukes til å
-  // bryte opp faste "pause-par" ved 6+ spillere
   const satTogetherCount = Object.fromEntries(
     ids.map((id) => [id, Object.fromEntries(ids.map((j) => [j, 0]))])
   );
@@ -48,7 +109,7 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
   const pairOnTeam1 = {};
 
   matchHistory.forEach((m) => {
-    const players = [m.team1[0], m.team1[1], m.team2[0], m.team2[1]];
+    const players = [m.team1[0], m.team1[1], m.team2[0], m.team2[1]].filter(Boolean);
     const sitting = ids.filter((id) => !players.includes(id));
 
     players.forEach((id) => {
@@ -62,7 +123,6 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
       consecutiveSat[id]++;
     });
 
-    // Tell par som har sittet over sammen
     for (let i = 0; i < sitting.length; i++)
       for (let j = i + 1; j < sitting.length; j++) {
         satTogetherCount[sitting[i]][sitting[j]]++;
@@ -70,6 +130,7 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
       }
 
     [[m.team1[0], m.team1[1]], [m.team2[0], m.team2[1]]].forEach(([a, b]) => {
+      if (!a || !b) return;
       if (a in partnerCount && b in partnerCount[a]) {
         partnerCount[a][b]++;
         partnerCount[b][a]++;
@@ -91,12 +152,6 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
   });
 
   // ── Velg hvem som sitter over ─────────────────────────────────────────────
-  //
-  // Steg 1: Spillere som HAR nådd MAX_CONSECUTIVE tvinges ut
-  // Steg 2: Gjenværende plasser fylles med den kombinasjonen som:
-  //   - minimerer satTogetherCount (unngå faste pause-par)
-  //   - prioriterer de med flest spilte kamper (de trenger pause)
-  //   - unngår de som allerede har sittet mange ganger på rad
 
   let sittingIds = [];
 
@@ -115,7 +170,6 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
     } else {
       const candidates = canSit.filter((id) => !forcedSitting.includes(id));
 
-      // Generer alle kombinasjoner av remainingSlots spillere
       function combinations(arr, k) {
         if (k === 0) return [[]];
         if (arr.length < k) return [];
@@ -132,16 +186,12 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
       combos.forEach((combo) => {
         const fullSitting = [...forcedSitting, ...combo];
 
-        // Straff: høy satTogether = dårlig (faste pause-par)
         let satScore = 0;
         for (let i = 0; i < fullSitting.length; i++)
           for (let j = i + 1; j < fullSitting.length; j++)
             satScore += satTogetherCount[fullSitting[i]][fullSitting[j]] * 10;
 
-        // Bonus: de med flest kamper bør sitte over
         const playedScore = -combo.reduce((s, id) => s + gamesPlayed[id], 0);
-
-        // Straff: unngå de som allerede sitter mange ganger på rad
         const satStreakScore = combo.reduce((s, id) => s + consecutiveSat[id], 0) * 2;
 
         const total = satScore + playedScore + satStreakScore;
@@ -179,16 +229,15 @@ export default function generateNextMatch(activePlayers, matchHistory, waitingQu
     }
   }
 
-  // ── Vurder om team1 og team2 bør byttes ──────────────────────────────────
-
   const t1Bal = best.t1.reduce((s, id) => s + (sideBalance[id] ?? 0), 0);
   const t2Bal = best.t2.reduce((s, id) => s + (sideBalance[id] ?? 0), 0);
   const finalTeam1 = t1Bal <= t2Bal ? best.t1 : best.t2;
   const finalTeam2 = t1Bal <= t2Bal ? best.t2 : best.t1;
 
   return {
-    team1:   finalTeam1,
-    team2:   finalTeam2,
-    sitting: sittingIds,
+    team1:      finalTeam1,
+    team2:      finalTeam2,
+    sitting:    sittingIds,
+    match_type: "doubles",
   };
 }

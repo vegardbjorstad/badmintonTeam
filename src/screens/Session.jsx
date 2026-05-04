@@ -9,28 +9,45 @@ import ScoreBig from "../components/ScoreBig";
 
 // ── MatchChoiceModal ──────────────────────────────────────────────────────────
 
-function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onManual, onPlayers, onEnd }) {
+function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onManual, onPlayers, onEnd, playerCount }) {
+  const canPlayDoubles = playerCount >= 4;
+  const [matchType, setMatchType] = useState(canPlayDoubles ? "doubles" : "singles");
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 28, maxWidth: 340, width: "100%" }}>
         <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 24, fontWeight: 800, color: "#f8fafc", marginBottom: 6 }}>{title}</div>
-        <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>{subtitle}</div>
+        <div style={{ color: "#64748b", fontSize: 14, marginBottom: 16 }}>{subtitle}</div>
+
+        {/* Singel / Dobbel-velger */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          <button
+            onClick={() => canPlayDoubles && setMatchType("doubles")}
+            style={{ flex: 1, height: 40, borderRadius: 10, border: `2px solid ${matchType === "doubles" ? "#38bdf8" : "#1e3a5f"}`, background: matchType === "doubles" ? "#0c2a3f" : "none", color: matchType === "doubles" ? "#38bdf8" : (canPlayDoubles ? "#475569" : "#1e3a5f"), fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15, cursor: canPlayDoubles ? "pointer" : "default", opacity: canPlayDoubles ? 1 : 0.35 }}>
+            DOBBEL
+          </button>
+          <button
+            onClick={() => setMatchType("singles")}
+            style={{ flex: 1, height: 40, borderRadius: 10, border: `2px solid ${matchType === "singles" ? "#a78bfa" : "#1e3a5f"}`, background: matchType === "singles" ? "#1a1040" : "none", color: matchType === "singles" ? "#a78bfa" : "#475569", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+            SINGEL
+          </button>
+        </div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {showRevenge && (
-            <button onClick={onRevenge} style={{ height: 54, borderRadius: 14, border: "2px solid #f97316", background: "#f9731611", color: "#f97316", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+            <button onClick={() => onRevenge(matchType)} style={{ height: 54, borderRadius: 14, border: "2px solid #f97316", background: "#f9731611", color: "#f97316", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
               🔄 REVANSJE
             </button>
           )}
-          <button onClick={onAuto} style={{ height: 54, borderRadius: 14, border: "none", background: "linear-gradient(135deg,#38bdf8,#6366f1)", color: "#fff", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+          <button onClick={() => onAuto(matchType)} style={{ height: 54, borderRadius: 14, border: "none", background: "linear-gradient(135deg,#38bdf8,#6366f1)", color: "#fff", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
             🎲 AUTOMATISK NESTE KAMP
           </button>
-          <button onClick={onManual} style={{ height: 54, borderRadius: 14, border: "2px solid #38bdf8", background: "none", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+          <button onClick={() => onManual(matchType)} style={{ height: 54, borderRadius: 14, border: "2px solid #38bdf8", background: "none", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
             ✋ VELG LAG MANUELT
           </button>
           <button onClick={onPlayers} style={{ height: 46, borderRadius: 14, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
             👥 Endre spillere
           </button>
-          {/* NY: Avslutt økt — kun synlig i post-match, ikke ved første kamp */}
           {onEnd && (
             <button onClick={onEnd} style={{ height: 46, borderRadius: 14, border: "2px solid #7f1d1d", background: "none", color: "#ef4444", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
               🛑 Avslutt økt
@@ -44,33 +61,36 @@ function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onM
 
 // ── ManualMatchModal ──────────────────────────────────────────────────────────
 
-function ManualMatchModal({ inSessionPlayers, playerName, playerIdx, onConfirm, onBack }) {
+function ManualMatchModal({ inSessionPlayers, playerName, playerIdx, onConfirm, onBack, matchType = "doubles" }) {
   const [team1, setTeam1] = useState([]);
   const [team2, setTeam2] = useState([]);
+  const maxPerTeam = matchType === "singles" ? 1 : 2;
 
   function togglePlayer(id) {
     if (team1.includes(id)) { setTeam1(team1.filter(x => x !== id)); return; }
     if (team2.includes(id)) { setTeam2(team2.filter(x => x !== id)); return; }
-    if (team1.length < 2) { setTeam1([...team1, id]); return; }
-    if (team2.length < 2) { setTeam2([...team2, id]); }
+    if (team1.length < maxPerTeam) { setTeam1([...team1, id]); return; }
+    if (team2.length < maxPerTeam) { setTeam2([...team2, id]); }
   }
 
-  const ready = team1.length === 2 && team2.length === 2;
+  const ready = team1.length === maxPerTeam && team2.length === maxPerTeam;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
-        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: "#f8fafc", marginBottom: 4 }}>Velg lag manuelt</div>
+        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: "#f8fafc", marginBottom: 4 }}>
+          Velg lag manuelt — {matchType === "singles" ? "SINGEL" : "DOBBEL"}
+        </div>
         <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-          Trykk på spillere for å fordele på lag. Første 2 = Lag 1 🟠, neste 2 = Lag 2 🟣
+          {matchType === "singles"
+            ? "Trykk på spillere for å fordele. Første = Spiller 1 🟠, neste = Spiller 2 🟣"
+            : "Trykk på spillere for å fordele på lag. Første 2 = Lag 1 🟠, neste 2 = Lag 2 🟣"}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
           {inSessionPlayers.map((p) => {
             const inT1 = team1.includes(p.id);
             const inT2 = team2.includes(p.id);
-            const t1Pos = team1.indexOf(p.id);
-            const t2Pos = team2.indexOf(p.id);
             return (
               <div key={p.id} onClick={() => togglePlayer(p.id)} style={{
                 display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
@@ -80,8 +100,8 @@ function ManualMatchModal({ inSessionPlayers, playerName, playerIdx, onConfirm, 
               }}>
                 <Avatar name={p.name} size={40} colorIndex={playerIdx(p.id)} />
                 <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: "#f8fafc" }}>{p.name}</span>
-                {inT1 && <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#f97316" }}>LAG 1 🟠</span>}
-                {inT2 && <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#6366f1" }}>LAG 2 🟣</span>}
+                {inT1 && <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#f97316" }}>{matchType === "singles" ? "SPILLER 1 🟠" : "LAG 1 🟠"}</span>}
+                {inT2 && <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 13, color: "#6366f1" }}>{matchType === "singles" ? "SPILLER 2 🟣" : "LAG 2 🟣"}</span>}
                 {!inT1 && !inT2 && <span style={{ fontSize: 13, color: "#334155" }}>○</span>}
               </div>
             );
@@ -91,7 +111,7 @@ function ManualMatchModal({ inSessionPlayers, playerName, playerIdx, onConfirm, 
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={onBack} style={{ flex: 1, height: 48, borderRadius: 12, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Tilbake</button>
           <button onClick={() => ready && onConfirm(team1, team2)} disabled={!ready} style={{ flex: 2, height: 48, borderRadius: 12, border: "none", background: ready ? "linear-gradient(135deg,#38bdf8,#6366f1)" : "#1e293b", color: ready ? "#fff" : "#475569", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 16, cursor: ready ? "pointer" : "default" }}>
-            {ready ? "Start kamp ✓" : `Velg ${4 - team1.length - team2.length} til`}
+            {ready ? "Start kamp ✓" : `Velg ${(maxPerTeam * 2) - team1.length - team2.length} til`}
           </button>
         </div>
       </div>
@@ -175,7 +195,7 @@ export default function Session({
   sessionMatches,
   undoLast,
   saveMatch,
-  discardMatch,        // ny prop — forkast kamp og generer ny
+  discardMatch,
   loading,
   setScreen,
   setStatsTab,
@@ -197,6 +217,7 @@ export default function Session({
   onAddNewPlayer,
 }) {
   const [showZeroModal, setShowZeroModal] = useState(false);
+  const [pendingMatchType, setPendingMatchType] = useState("doubles");
 
   if (!currentMatch && !postMatchChoice) {
     return <div style={{ padding: 20, color: "#f8fafc" }}>Ingen kamp</div>;
@@ -222,8 +243,8 @@ export default function Session({
     const allHistory = [...(allMatches || []), ...(sessionMatches || [])].filter(m => !deletedIds.has(m.session_id));
     for (let i = allHistory.length - 1; i >= 0; i--) {
       const m = allHistory[i];
-      const mt1 = new Set([m.team1_p1, m.team1_p2]);
-      const mt2 = new Set([m.team2_p1, m.team2_p2]);
+      const mt1 = new Set([m.team1_p1, m.team1_p2].filter(Boolean));
+      const mt2 = new Set([m.team2_p1, m.team2_p2].filter(Boolean));
       const normal   = sameTeam([...a], mt1) && sameTeam([...b], mt2);
       const reversed = sameTeam([...b], mt1) && sameTeam([...a], mt2);
       if (normal || reversed) {
@@ -236,6 +257,7 @@ export default function Session({
   }
 
   const h2h = currentMatch ? findLastH2H(currentMatch.team1, currentMatch.team2) : null;
+  const isSingles = currentMatch?.match_type === "singles";
 
   return (
     <>
@@ -267,7 +289,6 @@ export default function Session({
               Kampen kan ikke lagres uten resultat. Vil du endre scoren, eller forkaste kampen og generere en ny?
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* Endre resultat */}
               <button
                 onClick={() => setShowZeroModal(false)}
                 style={{
@@ -281,8 +302,6 @@ export default function Session({
               >
                 ← Endre resultat
               </button>
-
-              {/* Forkast og generer ny */}
               <button
                 onClick={() => {
                   setShowZeroModal(false);
@@ -306,31 +325,32 @@ export default function Session({
       )}
 
       {/* ── VELG FØRSTE KAMP ──────────────────────────────────────── */}
-{/* Første kamp — ingen onEnd */}
-{postMatchChoice === "first" && (
-  <MatchChoiceModal
-    title="Første kamp"
-    subtitle="Hvordan vil du sette opp første kamp?"
-    showRevenge={false}
-    onAuto={() => chooseAutoMatch(inSessionPlayers)}
-    onManual={() => setPostMatchChoice("manual")}
-    onPlayers={() => setPostMatchChoice("players")}
-  />
-)}
+      {postMatchChoice === "first" && (
+        <MatchChoiceModal
+          title="Første kamp"
+          subtitle="Hvordan vil du sette opp første kamp?"
+          showRevenge={false}
+          playerCount={inSessionPlayers.length}
+          onAuto={(matchType) => chooseAutoMatch(inSessionPlayers, matchType)}
+          onManual={(matchType) => { setPendingMatchType(matchType); setPostMatchChoice("manual"); }}
+          onPlayers={() => setPostMatchChoice("players")}
+        />
+      )}
 
-{/* Post-match — med onEnd */}
-{postMatchChoice === "post" && (
-  <MatchChoiceModal
-    title="Kamp lagret! ✓"
-    subtitle="Hva vil du gjøre nå?"
-    showRevenge={!!lastSavedMatch}
-    onRevenge={chooseRevenge}
-    onAuto={() => chooseAutoMatch(inSessionPlayers)}
-    onManual={() => setPostMatchChoice("manual")}
-    onPlayers={() => setPostMatchChoice("players")}
-    onEnd={startEndConfirm}
-  />
-)}
+      {/* ── VELG NESTE KAMP ───────────────────────────────────────── */}
+      {postMatchChoice === "post" && (
+        <MatchChoiceModal
+          title="Kamp lagret! ✓"
+          subtitle="Hva vil du gjøre nå?"
+          showRevenge={!!lastSavedMatch}
+          playerCount={inSessionPlayers.length}
+          onRevenge={(matchType) => chooseRevenge(matchType)}
+          onAuto={(matchType) => chooseAutoMatch(inSessionPlayers, matchType)}
+          onManual={(matchType) => { setPendingMatchType(matchType); setPostMatchChoice("manual"); }}
+          onPlayers={() => setPostMatchChoice("players")}
+          onEnd={startEndConfirm}
+        />
+      )}
 
       {/* ── MANUELT LAG-VALG ──────────────────────────────────────── */}
       {postMatchChoice === "manual" && (
@@ -338,7 +358,8 @@ export default function Session({
           inSessionPlayers={inSessionPlayers}
           playerName={playerName}
           playerIdx={playerIdx}
-          onConfirm={(team1, team2) => setManualMatch(team1, team2, inSessionPlayers)}
+          matchType={pendingMatchType}
+          onConfirm={(team1, team2) => setManualMatch(team1, team2, inSessionPlayers, pendingMatchType)}
           onBack={() => setPostMatchChoice(currentMatch ? "post" : "first")}
         />
       )}
@@ -356,6 +377,7 @@ export default function Session({
           onClose={() => setPostMatchChoice(currentMatch ? "post" : "first")}
         />
       )}
+
       <div style={{
         background: "linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",
         padding: "18px 16px 14px",
@@ -374,6 +396,7 @@ export default function Session({
           color: "#38bdf8", letterSpacing: "0.04em", flex: 1,
         }}>
           {`KAMP ${matchNumber}`}
+          {isSingles && <span style={{ fontSize: 13, color: "#a78bfa", fontWeight: 700, marginLeft: 8 }}>SINGEL</span>}
         </div>
         <button
           onClick={startEndConfirm}
@@ -383,7 +406,6 @@ export default function Session({
             fontFamily: "'Barlow Condensed',sans-serif",
             fontWeight: 700, fontSize: 13,
             padding: "6px 14px", cursor: "pointer", letterSpacing: "0.06em",
-            
           }}
         >
           AVSLUTT ØKT
@@ -474,7 +496,7 @@ export default function Session({
 
         <Card style={{ marginBottom: 14 }}>
           <div style={{ padding: "18px 18px 10px" }}>
-            <Label>LAG 1 🟠</Label>
+            <Label>{isSingles ? "SPILLER 1 🟠" : "LAG 1 🟠"}</Label>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {currentMatch.team1.map((id) => (
@@ -513,7 +535,7 @@ export default function Session({
         {/* LAG 2 */}
         <Card style={{ marginBottom: 14 }}>
           <div style={{ padding: "10px 18px 18px" }}>
-            <Label>LAG 2 🟣</Label>
+            <Label>{isSingles ? "SPILLER 2 🟣" : "LAG 2 🟣"}</Label>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {currentMatch.team2.map((id) => (
@@ -560,7 +582,7 @@ export default function Session({
           <Label>KAMPRESULTAT</Label>
           <div style={{ display: "flex", alignItems: "center" }}>
             <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 12, color: "#f97316", fontWeight: 700, marginBottom: 8 }}>LAG 1</div>
+              <div style={{ fontSize: 12, color: "#f97316", fontWeight: 700, marginBottom: 8 }}>{isSingles ? "SPILLER 1" : "LAG 1"}</div>
               <ScoreBig
                 value={score.t1}
                 onChange={(v) => setScore({ ...score, t1: v })}
@@ -569,7 +591,7 @@ export default function Session({
             </div>
             <div style={{ padding: "0 12px", color: "#334155", fontSize: 28, fontWeight: 700, paddingTop: 24 }}>—</div>
             <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 700, marginBottom: 8 }}>LAG 2</div>
+              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 700, marginBottom: 8 }}>{isSingles ? "SPILLER 2" : "LAG 2"}</div>
               <ScoreBig
                 value={score.t2}
                 onChange={(v) => setScore({ ...score, t2: v })}
@@ -577,7 +599,6 @@ export default function Session({
               />
             </div>
           </div>
-          {/* Uavgjort-advarsel */}
           {isDraw && (
             <div style={{
               textAlign: "center", marginTop: 12,
@@ -622,24 +643,32 @@ export default function Session({
           {sessionMatches.length === 0 && (
             <div style={{ color: "#64748b", paddingTop: 8 }}>Ingen kamper ennå</div>
           )}
-          {[...sessionMatches].reverse().map((m, i) => (
-            <div key={m.id ?? i} style={{
-              display: "grid", gridTemplateColumns: "1fr auto 1fr",
-              alignItems: "center", padding: "8px 0",
-              borderBottom: i < sessionMatches.length - 1 ? "1px solid #1e293b" : "none",
-              fontSize: 13, color: "#94a3b8", gap: 8,
-            }}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {playerName(m.team1_p1)}/{playerName(m.team1_p2)}
-              </span>
-              <span style={{ fontWeight: 700, color: "#f8fafc", whiteSpace: "nowrap", textAlign: "center" }}>
-                {m.score_team1}–{m.score_team2}
-              </span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
-                {playerName(m.team2_p1)}/{playerName(m.team2_p2)}
-              </span>
-            </div>
-          ))}
+          {[...sessionMatches].reverse().map((m, i) => {
+            const isSinglesMatch = m.match_type === "singles";
+            return (
+              <div key={m.id ?? i} style={{
+                display: "grid", gridTemplateColumns: "1fr auto 1fr",
+                alignItems: "center", padding: "8px 0",
+                borderBottom: i < sessionMatches.length - 1 ? "1px solid #1e293b" : "none",
+                fontSize: 13, color: "#94a3b8", gap: 8,
+              }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {isSinglesMatch
+                    ? playerName(m.team1_p1)
+                    : `${playerName(m.team1_p1)}/${playerName(m.team1_p2)}`}
+                </span>
+                <span style={{ fontWeight: 700, color: "#f8fafc", whiteSpace: "nowrap", textAlign: "center" }}>
+                  {m.score_team1}–{m.score_team2}
+                  {isSinglesMatch && <span style={{ fontSize: 10, color: "#a78bfa", marginLeft: 4 }}>S</span>}
+                </span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
+                  {isSinglesMatch
+                    ? playerName(m.team2_p1)
+                    : `${playerName(m.team2_p1)}/${playerName(m.team2_p2)}`}
+                </span>
+              </div>
+            );
+          })}
         </Card>
 
       </div>

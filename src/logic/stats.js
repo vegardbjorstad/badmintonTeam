@@ -4,9 +4,10 @@
  * computeStats
  * ------------
  * Tar inn:
- *   - matchSet  (liste av matcher)
- *   - pauseSet  (liste av pauser)
+ *   - matchSet   (liste av matcher)
+ *   - pauseSet   (liste av pauser)
  *   - playerList (default: alle spillere fra DB)
+ *   - matchType  (valgfritt: "doubles" | "singles" | undefined = alle)
  *
  * Returnerer en sortert liste med:
  * {
@@ -23,7 +24,7 @@
  * }
  */
 
-export function computeStats(matchSet, pauseSet, playerList = []) {
+export function computeStats(matchSet, pauseSet, playerList = [], matchType = null) {
   const stats = {};
 
   // Init stats for hver spiller
@@ -40,15 +41,20 @@ export function computeStats(matchSet, pauseSet, playerList = []) {
     };
   });
 
+  // Filtrer på matchType hvis oppgitt
+  const filtered = matchType
+    ? matchSet.filter(m => (m.match_type || "doubles") === matchType)
+    : matchSet;
+
   // Tell opp kamper
-  matchSet.forEach((m) => {
+  filtered.forEach((m) => {
     const entries = [
       [m.team1_p1, m.team1_p2, 1],
       [m.team2_p1, m.team2_p2, 2],
     ];
 
     entries.forEach(([p1, p2, side]) => {
-      [p1, p2].forEach((id) => {
+      [p1, p2].filter(Boolean).forEach((id) => {
         if (!stats[id]) return;
 
         stats[id].games++;
@@ -56,13 +62,13 @@ export function computeStats(matchSet, pauseSet, playerList = []) {
         if (m.winner === side) stats[id].wins++;
         else stats[id].losses++;
 
-        stats[id].pFor += side === 1 ? m.score_team1 : m.score_team2;
+        stats[id].pFor     += side === 1 ? m.score_team1 : m.score_team2;
         stats[id].pAgainst += side === 1 ? m.score_team2 : m.score_team1;
       });
     });
   });
 
-  // Pauser
+  // Pauser (kun relevant for dobbel, men vi beholder dem uansett)
   pauseSet.forEach((p) => {
     if (stats[p.player_id]) stats[p.player_id].pauses++;
   });

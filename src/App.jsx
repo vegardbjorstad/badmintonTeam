@@ -410,8 +410,8 @@ export default function App() {
         postMatchChoice={sess.postMatchChoice}
         setPostMatchChoice={sess.setPostMatchChoice}
         lastSavedMatch={sess.lastSavedMatch}
-        chooseAutoMatch={() => sess.chooseAutoMatch(activePlayers)}
-        setManualMatch={(t1, t2) => sess.setManualMatch(t1, t2, activePlayers)}
+       chooseAutoMatch={sess.chooseAutoMatch}
+        setManualMatch={sess.setManualMatch}
         chooseRevenge={sess.chooseRevenge}
         onAddNewPlayer={async (name) => {
           if (!auth.club) return;
@@ -493,7 +493,9 @@ export default function App() {
           session={null}
           statsTab={statsTab} setStatsTab={setStatsTab}
           sessionStats={sess.sessionStats}
+          sessionStatsSingles={sess.sessionStatsSingles}
           totalStats={sess.totalStats}
+          totalStatsSingles={sess.totalStatsSingles}
           sessionList={sess.sessionList}
           allSessions={sess.allSessions}
           allMatches={sess.allMatches}

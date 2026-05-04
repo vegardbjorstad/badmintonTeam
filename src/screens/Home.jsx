@@ -360,7 +360,7 @@ export default function Home({
         <Btn
           variant="primary"
           onClick={startSession}
-          disabled={checkedIn.length < 4 || loading}
+          disabled={checkedIn.length < 2 || loading}
         >
           {loading ? "STARTER..." : `🏸 START ØKT (${checkedIn.length} spillere)`}
         </Btn>

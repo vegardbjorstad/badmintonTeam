@@ -72,7 +72,7 @@ export function useSession(players, club) {
   }
 
   async function startSession(activePlayers) {
-    if (checkedIn.length < 4) { showToast("Minst 4 spillere!", "error"); return; }
+    if (checkedIn.length < 2) { showToast("Minst 2 spillere!", "error"); return; }
     setLoading(true);
     const { data, error } = await supabase.from("sessions")
       .insert({ date: new Date().toISOString().slice(0, 10), club_id: club.id })
@@ -104,12 +104,15 @@ export function useSession(players, club) {
     const { team1, team2 } = currentMatch;
     const winner = score.t1 > score.t2 ? 1 : 2;
     setLoading(true);
-    const { data: savedMatch, error } = await supabase.from("matches").insert({
-      session_id: session.id, match_number: matchNumber, club_id: club.id,
-      team1_p1: team1[0], team1_p2: team1[1],
-      team2_p1: team2[0], team2_p2: team2[1],
-      score_team1: score.t1, score_team2: score.t2, winner,
-    }).select().single();
+    
+const { data: savedMatch, error } = await supabase.from("matches").insert({
+  session_id: session.id, match_number: matchNumber, club_id: club.id,
+  team1_p1: team1[0], team1_p2: team1[1] ?? null,
+  team2_p1: team2[0], team2_p2: team2[1] ?? null,
+  score_team1: score.t1, score_team2: score.t2, winner,
+  match_type: currentMatch.match_type || "doubles",
+}).select().single();
+
     if (error || !savedMatch) { setLoading(false); showToast("Feil ved lagring", "error"); return; }
     if (currentMatch.sitting.length > 0) {
       await supabase.from("match_pauses").insert(
@@ -121,10 +124,10 @@ export function useSession(players, club) {
     }
     setLoading(false);
     loadAll();
-    const newHistory = [...matchHistory, { team1, team2 }];
+    const newHistory = [...matchHistory, { team1, team2, match_type: currentMatch.match_type || "doubles" }];
     setMatchHistory(newHistory);
     setMatchNumber((n) => n + 1);
-    setLastSavedMatch({ team1, team2 });
+   setLastSavedMatch({ team1, team2, match_type: currentMatch.match_type || "doubles" });
     showToast("Kamp lagret ✓", "success");
     setCurrentMatch(null);
     setPostMatchChoice("post"); // vis valg etter kamp
@@ -142,48 +145,49 @@ export function useSession(players, club) {
     loadAll();
     loadSessionMatches(session.id);
     showToast("Angret ✓", "info");
-    setCurrentMatch(generateNextMatch(activePlayers, newHistory, waitingQueue));
+    const matchType = currentMatch?.match_type || "doubles";
+    const relevantHistory = newHistory.filter(m => (m.match_type || "doubles") === matchType);
+    setCurrentMatch(generateNextMatch(activePlayers, relevantHistory, waitingQueue, matchType));
     setScore({ t1: 0, t2: 0 });
   }
 
  function discardMatch(activePlayers) {
   showToast("Kamp forkastet — ny kamp generert", "info");
-  
-  // Legg til den forkastede kampen midlertidig i historikken
-  // slik at algoritmen velger en annen kombinasjon
+  const matchType = currentMatch?.match_type || "doubles";
+  const relevantHistory = matchHistory.filter(m => (m.match_type || "doubles") === matchType);
   const tempHistory = currentMatch
-    ? [...matchHistory, { team1: currentMatch.team1, team2: currentMatch.team2 }]
-    : matchHistory;
-
-  const next = generateNextMatch(activePlayers, tempHistory, waitingQueue);
+    ? [...relevantHistory, { team1: currentMatch.team1, team2: currentMatch.team2, match_type: matchType }]
+    : relevantHistory;
+  const next = generateNextMatch(activePlayers, tempHistory, waitingQueue, matchType);
   setCurrentMatch(next);
   setWaitingQueue(next?.sitting || []);
   setScore({ t1: 0, t2: 0 });
 }
 
-  function chooseAutoMatch(activePlayers) {
-    const next = generateNextMatch(activePlayers, matchHistory, waitingQueue);
-    setCurrentMatch(next);
-    setWaitingQueue(next?.sitting || []);
-    setScore({ t1: 0, t2: 0 });
-    setPostMatchChoice(null);
-  }
+function chooseAutoMatch(activePlayers, matchType = "doubles") {
+  const relevantHistory = matchHistory.filter(m => (m.match_type || "doubles") === matchType);
+  const next = generateNextMatch(activePlayers, relevantHistory, waitingQueue, matchType);
+  if (!next) { showToast("Ikke nok spillere for denne kamptypen", "error"); return; }
+  setCurrentMatch({ ...next, match_type: matchType });
+  setWaitingQueue(next?.sitting || []);
+  setScore({ t1: 0, t2: 0 });
+  setPostMatchChoice(null);
+}
 
-  function setManualMatch(team1, team2, activePlayers) {
-    const sitting = activePlayers.map(p => p.id).filter(id => !team1.includes(id) && !team2.includes(id));
-    setCurrentMatch({ team1, team2, sitting });
-    setWaitingQueue(sitting);
-    setScore({ t1: 0, t2: 0 });
-    setPostMatchChoice(null);
-  }
+function setManualMatch(team1, team2, activePlayers, matchType = "doubles") {
+  const sitting = activePlayers.map(p => p.id).filter(id => !team1.includes(id) && !team2.includes(id));
+  setCurrentMatch({ team1, team2, sitting, match_type: matchType });
+  setWaitingQueue(sitting);
+  setScore({ t1: 0, t2: 0 });
+  setPostMatchChoice(null);
+}
 
-  function chooseRevenge() {
-    if (!lastSavedMatch) return;
-    // Bytt lagene
-    setCurrentMatch({ team1: lastSavedMatch.team2, team2: lastSavedMatch.team1, sitting: currentMatch?.sitting || waitingQueue });
-    setScore({ t1: 0, t2: 0 });
-    setPostMatchChoice(null);
-  }
+function chooseRevenge() {
+  if (!lastSavedMatch) return;
+  setCurrentMatch({ team1: lastSavedMatch.team2, team2: lastSavedMatch.team1, sitting: currentMatch?.sitting || waitingQueue, match_type: lastSavedMatch.match_type || "doubles" });
+  setScore({ t1: 0, t2: 0 });
+  setPostMatchChoice(null);
+}
 
   function addPlayerToOngoingSession(playerId, playerName, activePlayers) {
     setCheckedIn((prev) => [...prev, playerId]);
@@ -304,7 +308,8 @@ export function useSession(players, club) {
 
   // ── Avledede verdier ──
   const sessionPauses = allPauses.filter((p) => p.session_id === session?.id);
-  const sessionStats  = computeStats(sessionMatches, sessionPauses, players);
+  const sessionStats        = computeStats(sessionMatches, sessionPauses, players, "doubles");
+  const sessionStatsSingles = computeStats(sessionMatches, sessionPauses, players, "singles");
 
   const activeMatches = allMatches.filter((m) => {
     const s = allSessions.find((s) => s.id === m.session_id);
@@ -314,7 +319,8 @@ export function useSession(players, club) {
     const s = allSessions.find((s) => s.id === p.session_id);
     return !s?.deleted_at;
   });
-  const totalStats = computeStats(activeMatches, activePauses, players);
+  const totalStats          = computeStats(activeMatches, activePauses, players, "doubles");
+  const totalStatsSingles   = computeStats(activeMatches, activePauses, players, "singles");
 
   const sessionList = allSessions
     .filter((s) => !s.deleted_at && !s.hidden)
@@ -349,6 +355,6 @@ export function useSession(players, club) {
     discardMatch,
     removePlayerFromSession,
     softDeleteSession, hideSession, restoreSession, permanentDeleteSession,
-    sessionStats, totalStats, sessionList,
+    sessionStats, sessionStatsSingles, totalStats, totalStatsSingles, sessionList,
   };
 }
