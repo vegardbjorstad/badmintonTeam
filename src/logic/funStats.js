@@ -204,7 +204,7 @@ function unpredictabilityScore(matches, allSessions, playerId) {
 
 function isDeuceMatch(m) {
   const maxScore = Math.max(m.score_team1, m.score_team2);
-  return maxScore !== 11 && maxScore !== 21;
+  return maxScore > 15;
 }
 
 function deuceWins(matches, playerId) {

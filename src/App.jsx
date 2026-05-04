@@ -308,7 +308,7 @@ export default function App() {
   const EndConfirmModal = () => (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-      zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+      zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
     }}>
       <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 28, maxWidth: 340, width: "100%" }}>
         <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: "#f8fafc", marginBottom: 10 }}>

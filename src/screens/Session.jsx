@@ -9,7 +9,7 @@ import ScoreBig from "../components/ScoreBig";
 
 // ── MatchChoiceModal ──────────────────────────────────────────────────────────
 
-function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onManual, onPlayers }) {
+function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onManual, onPlayers, onEnd }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ background: "#0f172a", border: "2px solid #334155", borderRadius: 20, padding: 28, maxWidth: 340, width: "100%" }}>
@@ -30,6 +30,12 @@ function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onM
           <button onClick={onPlayers} style={{ height: 46, borderRadius: 14, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
             👥 Endre spillere
           </button>
+          {/* NY: Avslutt økt — kun synlig i post-match, ikke ved første kamp */}
+          {onEnd && (
+            <button onClick={onEnd} style={{ height: 46, borderRadius: 14, border: "2px solid #7f1d1d", background: "none", color: "#ef4444", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+              🛑 Avslutt økt
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -300,29 +306,31 @@ export default function Session({
       )}
 
       {/* ── VELG FØRSTE KAMP ──────────────────────────────────────── */}
-      {postMatchChoice === "first" && (
-        <MatchChoiceModal
-          title="Første kamp"
-          subtitle="Hvordan vil du sette opp første kamp?"
-          showRevenge={false}
-          onAuto={() => chooseAutoMatch(inSessionPlayers)}
-          onManual={() => setPostMatchChoice("manual")}
-          onPlayers={() => setPostMatchChoice("players")}
-        />
-      )}
+{/* Første kamp — ingen onEnd */}
+{postMatchChoice === "first" && (
+  <MatchChoiceModal
+    title="Første kamp"
+    subtitle="Hvordan vil du sette opp første kamp?"
+    showRevenge={false}
+    onAuto={() => chooseAutoMatch(inSessionPlayers)}
+    onManual={() => setPostMatchChoice("manual")}
+    onPlayers={() => setPostMatchChoice("players")}
+  />
+)}
 
-      {/* ── VELG NESTE KAMP ───────────────────────────────────────── */}
-      {postMatchChoice === "post" && (
-        <MatchChoiceModal
-          title="Kamp lagret! ✓"
-          subtitle="Hva vil du gjøre nå?"
-          showRevenge={!!lastSavedMatch}
-          onRevenge={chooseRevenge}
-          onAuto={() => chooseAutoMatch(inSessionPlayers)}
-          onManual={() => setPostMatchChoice("manual")}
-          onPlayers={() => setPostMatchChoice("players")}
-        />
-      )}
+{/* Post-match — med onEnd */}
+{postMatchChoice === "post" && (
+  <MatchChoiceModal
+    title="Kamp lagret! ✓"
+    subtitle="Hva vil du gjøre nå?"
+    showRevenge={!!lastSavedMatch}
+    onRevenge={chooseRevenge}
+    onAuto={() => chooseAutoMatch(inSessionPlayers)}
+    onManual={() => setPostMatchChoice("manual")}
+    onPlayers={() => setPostMatchChoice("players")}
+    onEnd={startEndConfirm}
+  />
+)}
 
       {/* ── MANUELT LAG-VALG ──────────────────────────────────────── */}
       {postMatchChoice === "manual" && (
@@ -375,6 +383,7 @@ export default function Session({
             fontFamily: "'Barlow Condensed',sans-serif",
             fontWeight: 700, fontSize: 13,
             padding: "6px 14px", cursor: "pointer", letterSpacing: "0.06em",
+            
           }}
         >
           AVSLUTT ØKT
