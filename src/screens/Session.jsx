@@ -9,9 +9,10 @@ import ScoreBig from "../components/ScoreBig";
 
 // ── MatchChoiceModal ──────────────────────────────────────────────────────────
 
-function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onManual, onPlayers, onEnd, playerCount }) {
+function MatchChoiceModal({ title, subtitle, showRevenge, lastSavedMatchType, onRevenge, onAuto, onManual, onPlayers, onEnd, playerCount }) {
   const canPlayDoubles = playerCount >= 4;
   const [matchType, setMatchType] = useState(canPlayDoubles ? "doubles" : "singles");
+  const canRevenge = showRevenge && lastSavedMatchType === matchType;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -33,25 +34,28 @@ function MatchChoiceModal({ title, subtitle, showRevenge, onRevenge, onAuto, onM
           </button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {showRevenge && (
-            <button onClick={() => onRevenge(matchType)} style={{ height: 54, borderRadius: 14, border: "2px solid #f97316", background: "#f9731611", color: "#f97316", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {canRevenge && (
+            <button onClick={() => onRevenge(matchType)} style={{ height: 52, borderRadius: 12, border: "2px solid #16a34a", background: "#16a34a18", color: "#16a34a", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 16, cursor: "pointer", letterSpacing: "0.04em" }}>
               🔄 REVANSJE
             </button>
           )}
-          <button onClick={() => onAuto(matchType)} style={{ height: 54, borderRadius: 14, border: "none", background: "linear-gradient(135deg,#38bdf8,#6366f1)", color: "#fff", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+          <button onClick={() => onAuto(matchType)} style={{ height: 52, borderRadius: 12, border: "2px solid #38bdf8", background: "#38bdf811", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 16, cursor: "pointer", letterSpacing: "0.04em" }}>
             🎲 AUTOMATISK NESTE KAMP
           </button>
-          <button onClick={() => onManual(matchType)} style={{ height: 54, borderRadius: 14, border: "2px solid #38bdf8", background: "none", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer", letterSpacing: "0.04em" }}>
+          <button onClick={() => onManual(matchType)} style={{ height: 52, borderRadius: 12, border: "2px solid #38bdf8", background: "#38bdf811", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 16, cursor: "pointer", letterSpacing: "0.04em" }}>
             ✋ VELG LAG MANUELT
           </button>
-          <button onClick={onPlayers} style={{ height: 46, borderRadius: 14, border: "2px solid #1e3a5f", background: "none", color: "#64748b", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-            👥 Endre spillere
+          <button onClick={onPlayers} style={{ height: 52, borderRadius: 12, border: "2px solid #38bdf8", background: "#38bdf811", color: "#38bdf8", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: 16, cursor: "pointer", letterSpacing: "0.04em" }}>
+            👥 ENDRE SPILLERE
           </button>
           {onEnd && (
-            <button onClick={onEnd} style={{ height: 46, borderRadius: 14, border: "2px solid #7f1d1d", background: "none", color: "#ef4444", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-              🛑 Avslutt økt
-            </button>
+            <>
+              <div style={{ height: 1, background: "#1e3a5f", margin: "4px 0" }} />
+              <button onClick={onEnd} style={{ height: 44, borderRadius: 12, border: "2px solid #ef4444", background: "#ef444418", color: "#ef4444", fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer", letterSpacing: "0.04em" }}>
+                🛑 AVSLUTT ØKT
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -343,6 +347,7 @@ export default function Session({
           title="Kamp lagret! ✓"
           subtitle="Hva vil du gjøre nå?"
           showRevenge={!!lastSavedMatch}
+          lastSavedMatchType={lastSavedMatch?.match_type || "doubles"}
           playerCount={inSessionPlayers.length}
           onRevenge={(matchType) => chooseRevenge(matchType)}
           onAuto={(matchType) => chooseAutoMatch(inSessionPlayers, matchType)}
